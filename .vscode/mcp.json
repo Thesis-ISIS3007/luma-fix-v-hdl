@@ -1,7 +1,7 @@
 {
   "servers": {
-    "thesis-prototype-metals": {
-      "url": "http://localhost:41547/mcp",
+    "prototype-metals": {
+      "url": "http://localhost:36211/mcp",
       "type": "http"
     }
   }

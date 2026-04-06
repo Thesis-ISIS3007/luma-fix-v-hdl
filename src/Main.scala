@@ -1,4 +1,4 @@
-package luma_fix_v
+package prototype
 
 import circt.stage.ChiselStage
 

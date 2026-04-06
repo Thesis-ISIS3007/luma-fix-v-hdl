@@ -14,10 +14,10 @@ jvmVersion: temurin:25
 compileMvnDeps: [com.lihaoyi:::acyclic:0.3.20]
 
 mvnDeps:
-  - org.chipsalliance::chisel:7.9.0
+  - org.chipsalliance::chisel:7.10.0
 scalacPluginMvnDeps:
   - com.lihaoyi:::acyclic:0.3.20
-  - org.chipsalliance:::chisel-plugin:7.9.0
+  - org.chipsalliance:::chisel-plugin:7.10.0
 
 scalacOptions:
   - -encoding
