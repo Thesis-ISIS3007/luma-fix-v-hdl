@@ -1,0 +1,32 @@
+mill-version: 1.1.5
+mill-jvm-version: temurin:25
+mill-build:
+  mvnDeps:
+    - com.goyeau::mill-scalafix_mill1:0.6.0
+
+mainClass: prototype.Main
+extends:
+  - ScalaModule
+  - com.goyeau.mill.scalafix.ScalafixModule
+scalaVersion: 2.13.18
+jvmVersion: temurin:25
+
+compileMvnDeps: [com.lihaoyi:::acyclic:0.3.20]
+
+mvnDeps:
+  - org.chipsalliance::chisel:7.9.0
+scalacPluginMvnDeps:
+  - com.lihaoyi:::acyclic:0.3.20
+  - org.chipsalliance:::chisel-plugin:7.9.0
+
+scalacOptions:
+  - -encoding
+  - utf-8
+  - -Wunused
+  - -deprecation
+  - -language:reflectiveCalls
+  - -deprecation
+  - -feature
+  - -Xcheckinit
+  - -Ymacro-annotations
+  - -P:acyclic:force

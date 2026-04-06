@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "thesis-prototype-metals": {
+      "url": "http://localhost:41547/mcp",
+      "type": "http"
+    }
+  }
+}

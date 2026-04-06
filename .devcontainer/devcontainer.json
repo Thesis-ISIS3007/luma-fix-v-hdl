@@ -1,0 +1,22 @@
+{
+  "name": "Ubuntu",
+  "image": "mcr.microsoft.com/devcontainers/base:noble",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "scalameta.metals",
+        "scala-lang.scala",
+        "lramseyer.vaporview",
+        "esbenp.prettier-vscode",
+        "redhat.vscode-yaml",
+        "dracula-theme.theme-dracula"
+      ],
+      "settings": {
+        "workbench.sideBar.location": "right",
+        "workbench.colorTheme": "Dracula Theme",
+        "editor.renderWhitespace": "boundary",
+        "editor.minimap.enabled": false
+      }
+    }
+  }
+}
