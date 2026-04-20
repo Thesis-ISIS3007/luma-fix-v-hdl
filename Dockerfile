@@ -11,6 +11,8 @@ ca-certificates \
 curl \
 wget \
 make \
+gcc \
+build-essential \
 verilator && \
 rm -rf /var/lib/apt/lists/*
 
