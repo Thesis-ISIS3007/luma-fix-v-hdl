@@ -86,35 +86,35 @@ class CoreProgramSpec extends AnyFunSpec with ChiselSim {
         val dataMem = scala.collection.mutable.Map[Int, BigInt]()
         val regs = Array.fill[BigInt](32)(BigInt(0))
 
-        c.io.imem.reqReady.poke(true.B)
-        c.io.imem.respValid.poke(false.B)
-        c.io.imem.respData.poke(0.U)
+        c.io.imem.req.ready.poke(true.B)
+        c.io.imem.resp.valid.poke(false.B)
+        c.io.imem.resp.bits.poke(0.U)
 
-        c.io.dmem.reqReady.poke(true.B)
-        c.io.dmem.respValid.poke(false.B)
-        c.io.dmem.respData.poke(0.U)
+        c.io.dmem.req.ready.poke(true.B)
+        c.io.dmem.resp.valid.poke(false.B)
+        c.io.dmem.resp.bits.poke(0.U)
 
         for (_ <- 0 until 80) {
-          val pc = c.io.imem.reqAddr.peek().litValue.toInt
+          val pc = c.io.imem.req.bits.peek().litValue.toInt
           val inst = prog.getOrElse(pc, iType(0, 0, 0, 0, 0x13))
-          c.io.imem.respValid.poke(true.B)
-          c.io.imem.respData.poke((inst & 0xffffffffL).U(32.W))
+          c.io.imem.resp.valid.poke(true.B)
+          c.io.imem.resp.bits.poke((inst & 0xffffffffL).U(32.W))
 
-          c.io.dmem.respValid.poke(false.B)
-          c.io.dmem.respData.poke(0.U)
+          c.io.dmem.resp.valid.poke(false.B)
+          c.io.dmem.resp.bits.poke(0.U)
 
-          if (c.io.dmem.reqValid.peek().litToBoolean) {
-            val addr = c.io.dmem.reqAddr.peek().litValue.toInt & ~0x3
-            val write = c.io.dmem.reqWrite.peek().litToBoolean
-            val wdata = c.io.dmem.reqWData.peek().litValue
-            val wmask = c.io.dmem.reqWMask.peek().litValue.toInt
+          if (c.io.dmem.req.valid.peek().litToBoolean) {
+            val addr = c.io.dmem.req.bits.addr.peek().litValue.toInt & ~0x3
+            val write = c.io.dmem.req.bits.write.peek().litToBoolean
+            val wdata = c.io.dmem.req.bits.wData.peek().litValue
+            val wmask = c.io.dmem.req.bits.wMask.peek().litValue.toInt
             val oldWord = dataMem.getOrElse(addr, BigInt(0))
 
             if (write) {
               dataMem(addr) = applyMask(oldWord, wdata, wmask)
             } else {
-              c.io.dmem.respValid.poke(true.B)
-              c.io.dmem.respData
+              c.io.dmem.resp.valid.poke(true.B)
+              c.io.dmem.resp.bits
                 .poke(dataMem.getOrElse(addr, BigInt(0)).U(32.W))
             }
           }

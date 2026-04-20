@@ -4,22 +4,20 @@ import chisel3._
 import chisel3.util._
 
 class InstrBusIO extends Bundle {
-  val reqValid = Output(Bool())
-  val reqAddr = Output(UInt(32.W))
-  val reqReady = Input(Bool())
-  val respValid = Input(Bool())
-  val respData = Input(UInt(32.W))
+  val req = Decoupled(UInt(32.W))
+  val resp = Flipped(Valid(UInt(32.W)))
+}
+
+class DataReq extends Bundle {
+  val addr = UInt(32.W)
+  val write = Bool()
+  val wData = UInt(32.W)
+  val wMask = UInt(4.W)
 }
 
 class DataBusIO extends Bundle {
-  val reqValid = Output(Bool())
-  val reqAddr = Output(UInt(32.W))
-  val reqWrite = Output(Bool())
-  val reqWData = Output(UInt(32.W))
-  val reqWMask = Output(UInt(4.W))
-  val reqReady = Input(Bool())
-  val respValid = Input(Bool())
-  val respData = Input(UInt(32.W))
+  val req = Decoupled(new DataReq)
+  val resp = Flipped(Valid(UInt(32.W)))
 }
 
 class IfIdPipe extends Bundle {
@@ -81,7 +79,7 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   val memWb = RegInit(0.U.asTypeOf(new MemWbPipe))
   val memWbValid = RegInit(false.B)
 
-  val fetchedInst = io.imem.respData
+  val fetchedInst = io.imem.resp.bits
   val decode = RV32IDecoder.decode(ifId.inst)
 
   regFile.io.rs1Addr := decode.rs1
@@ -155,10 +153,10 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   )
 
   val loadShift = exMem.aluRes(1, 0)
-  val loadByte = (io.dmem.respData >> (loadShift << 3))(7, 0)
-  val loadHalf = (io.dmem.respData >> (loadShift(1) << 4))(15, 0)
+  val loadByte = (io.dmem.resp.bits >> (loadShift << 3))(7, 0)
+  val loadHalf = (io.dmem.resp.bits >> (loadShift(1) << 4))(15, 0)
   val loadData = Wire(UInt(32.W))
-  loadData := io.dmem.respData
+  loadData := io.dmem.resp.bits
   switch(exMem.funct3) {
     is("b000".U) {
       loadData := Cat(
@@ -172,19 +170,19 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
         loadHalf
       )
     }
-    is("b010".U) { loadData := io.dmem.respData }
+    is("b010".U) { loadData := io.dmem.resp.bits }
     is("b100".U) { loadData := Cat(0.U(24.W), loadByte) }
     is("b101".U) { loadData := Cat(0.U(16.W), loadHalf) }
   }
 
   val memAccess = exMem.ctrl.memRead || exMem.ctrl.memWrite
   val memRespNeeded = exMem.ctrl.memRead
-  val memReqAccepted = !memAccess || io.dmem.reqReady
-  val memRespReady = !memRespNeeded || io.dmem.respValid
+  val memReqAccepted = !memAccess || io.dmem.req.ready
+  val memRespReady = !memRespNeeded || io.dmem.resp.valid
   val memStageReady = !exMemValid || (memReqAccepted && memRespReady)
 
   val fetchBlocked = loadUseHazard || !memStageReady
-  val fetchFire = io.imem.respValid && !fetchBlocked
+  val fetchFire = io.imem.resp.valid && !fetchBlocked
 
   val nextPC = Mux(exJumpTaken && idExValid, jumpTarget, pc + 4.U)
   when(exJumpTaken && idExValid) {
@@ -254,14 +252,14 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
     memWb.rdWrite := exMem.ctrl.rdWrite
   }
 
-  io.imem.reqValid := true.B
-  io.imem.reqAddr := pc
+  io.imem.req.valid := true.B
+  io.imem.req.bits := pc
 
-  io.dmem.reqValid := exMemValid && (exMem.ctrl.memRead || exMem.ctrl.memWrite)
-  io.dmem.reqAddr := exMem.aluRes
-  io.dmem.reqWrite := exMem.ctrl.memWrite
-  io.dmem.reqWData := storeWData
-  io.dmem.reqWMask := storeMask
+  io.dmem.req.valid := exMemValid && (exMem.ctrl.memRead || exMem.ctrl.memWrite)
+  io.dmem.req.bits.addr := exMem.aluRes
+  io.dmem.req.bits.write := exMem.ctrl.memWrite
+  io.dmem.req.bits.wData := storeWData
+  io.dmem.req.bits.wMask := storeMask
 
   io.debugPC := pc
   io.debugWbValid := memWbValid && memWb.rdWrite

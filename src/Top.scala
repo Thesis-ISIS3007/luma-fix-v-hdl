@@ -14,20 +14,8 @@ class LumaFixV extends Module {
 
   val core = Module(new RV32ICore())
 
-  core.io.imem.reqReady := io.imem.reqReady
-  core.io.imem.respValid := io.imem.respValid
-  core.io.imem.respData := io.imem.respData
-  io.imem.reqValid := core.io.imem.reqValid
-  io.imem.reqAddr := core.io.imem.reqAddr
-
-  core.io.dmem.reqReady := io.dmem.reqReady
-  core.io.dmem.respValid := io.dmem.respValid
-  core.io.dmem.respData := io.dmem.respData
-  io.dmem.reqValid := core.io.dmem.reqValid
-  io.dmem.reqAddr := core.io.dmem.reqAddr
-  io.dmem.reqWrite := core.io.dmem.reqWrite
-  io.dmem.reqWData := core.io.dmem.reqWData
-  io.dmem.reqWMask := core.io.dmem.reqWMask
+  core.io.imem <> io.imem
+  core.io.dmem <> io.dmem
 
   io.debugPC := core.io.debugPC
   io.debugWbValid := core.io.debugWbValid
