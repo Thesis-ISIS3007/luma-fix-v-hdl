@@ -17,7 +17,7 @@ class LoadMemoryFromFileProgramSpec extends AnyFunSpec with ChiselSim {
 
       simulate(
         new CoreMemoryHarness(
-          programHex = programHexPath,
+          programFile = programHexPath,
           imemWords = 64,
           dmemWords = 64
         )

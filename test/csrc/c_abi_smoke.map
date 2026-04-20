@@ -1,0 +1,73 @@
+
+There are no discarded input sections
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+RAM              0x00000000         0x00001000         xrw
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+LOAD /tmp/ccjvGKVx.o
+LOAD /tmp/cchPGheQ.o
+
+.text           0x00000000       0x28
+ *(.text.start)
+ .text.start    0x00000000       0x10 /tmp/ccjvGKVx.o
+                0x00000000                _start
+ *(.text*)
+ .text          0x00000010        0x0 /tmp/ccjvGKVx.o
+ .text          0x00000010        0x0 /tmp/cchPGheQ.o
+ .text.startup  0x00000010       0x18 /tmp/cchPGheQ.o
+                0x00000010                main
+
+.rodata
+ *(.rodata*)
+
+.note.gnu.build-id
+                0x00000028       0x24
+ .note.gnu.build-id
+                0x00000028       0x24 /tmp/ccjvGKVx.o
+
+.eh_frame       0x0000004c       0x28
+ .eh_frame      0x0000004c       0x28 /tmp/cchPGheQ.o
+
+.eh_frame_hdr   0x00000074       0x14
+ .eh_frame_hdr  0x00000074       0x14 /tmp/cchPGheQ.o
+                0x00000074                __GNU_EH_FRAME_HDR
+
+.rela.dyn       0x00000088        0x0
+ .rela.text.start
+                0x00000088        0x0 /tmp/ccjvGKVx.o
+                0x00000088                        . = ALIGN (0x4)
+
+.data           0x00000088        0x0
+ *(.data*)
+ .data          0x00000088        0x0 /tmp/ccjvGKVx.o
+ .data          0x00000088        0x0 /tmp/cchPGheQ.o
+
+.bss            0x00000088        0x0
+ *(.bss*)
+ .bss           0x00000088        0x0 /tmp/ccjvGKVx.o
+ .bss           0x00000088        0x0 /tmp/cchPGheQ.o
+ *(COMMON)
+                0x00000090                        . = ALIGN (0x10)
+                0x00001000                        _stack_top = (ORIGIN (RAM) + LENGTH (RAM))
+OUTPUT(c_abi_smoke.elf elf32-littleriscv)
+
+.riscv.attributes
+                0x00000000       0x1c
+ .riscv.attributes
+                0x00000000       0x1a /tmp/ccjvGKVx.o
+ .riscv.attributes
+                0x0000001a       0x1c /tmp/cchPGheQ.o
+
+.comment        0x00000000       0x34
+ .comment       0x00000000       0x34 /tmp/cchPGheQ.o
+                                 0x35 (size before relaxing)
+
+.note.GNU-stack
+                0x00000000        0x0
+ .note.GNU-stack
+                0x00000000        0x0 /tmp/cchPGheQ.o

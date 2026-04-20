@@ -3,9 +3,11 @@ package luma_fix_v
 import chisel3._
 import chisel3.util._
 import chisel3.util.experimental.loadMemoryFromFile
+import firrtl.annotations.MemoryLoadFileType
 
 class CoreMemoryHarness(
-    programHex: String,
+    programFile: String,
+    programFileType: MemoryLoadFileType.FileType = MemoryLoadFileType.Hex,
     imemWords: Int = 1024,
     dmemWords: Int = 1024,
     resetVector: BigInt = 0
@@ -31,7 +33,7 @@ class CoreMemoryHarness(
   val imem = Mem(imemWords, UInt(32.W))
   val dmem = SyncReadMem(dmemWords, Vec(4, UInt(8.W)))
 
-  loadMemoryFromFile(imem, programHex)
+  loadMemoryFromFile(imem, programFile, programFileType)
 
   val iWordAddr = core.io.imem.req.bits(iAddrWidth + 1, 2)
   core.io.imem.req.ready := true.B
