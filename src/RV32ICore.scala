@@ -58,7 +58,7 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   val io = IO(new Bundle {
     val imem = new InstrBusIO
     val dmem = new DataBusIO
-    val debugPc = Output(UInt(32.W))
+    val debugPC = Output(UInt(32.W))
     val debugWbValid = Output(Bool())
     val debugWbRd = Output(UInt(5.W))
     val debugWbData = Output(UInt(32.W))
@@ -134,7 +134,7 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   val jumpTarget =
     Mux(idEx.ctrl.jumpReg, Cat(jumpTargetRaw(31, 1), 0.U(1.W)), jumpTargetRaw)
 
-  val exOp1 = Mux(idEx.ctrl.aluSrc1Pc, idEx.pc, exRs1)
+  val exOp1 = Mux(idEx.ctrl.aluSrc1PC, idEx.pc, exRs1)
   val exOp2 = Mux(idEx.ctrl.aluSrc2Imm, idEx.imm, exRs2)
 
   alu.io.op := idEx.ctrl.aluOp
@@ -186,7 +186,7 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   val fetchBlocked = loadUseHazard || !memStageReady
   val fetchFire = io.imem.respValid && !fetchBlocked
 
-  val nextPc = Mux(exJumpTaken && idExValid, jumpTarget, pc + 4.U)
+  val nextPC = Mux(exJumpTaken && idExValid, jumpTarget, pc + 4.U)
   when(exJumpTaken && idExValid) {
     pc := jumpTarget
   }.elsewhen(fetchFire) {
@@ -243,7 +243,7 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
     Seq(
       RV32IDecode.WbSelAlu -> exMem.aluRes,
       RV32IDecode.WbSelMem -> loadData,
-      RV32IDecode.WbSelPc4 -> exMem.pc4
+      RV32IDecode.WbSelPC4 -> exMem.pc4
     )
   )
 
@@ -263,10 +263,10 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   io.dmem.reqWData := storeWData
   io.dmem.reqWMask := storeMask
 
-  io.debugPc := pc
+  io.debugPC := pc
   io.debugWbValid := memWbValid && memWb.rdWrite
   io.debugWbRd := memWb.rd
   io.debugWbData := memWb.wbData
 
-  dontTouch(nextPc)
+  dontTouch(nextPC)
 }

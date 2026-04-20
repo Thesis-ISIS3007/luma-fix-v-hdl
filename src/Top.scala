@@ -6,7 +6,7 @@ class LumaFixV extends Module {
   val io = IO(new Bundle {
     val imem = new InstrBusIO
     val dmem = new DataBusIO
-    val debugPc = Output(UInt(32.W))
+    val debugPC = Output(UInt(32.W))
     val debugWbValid = Output(Bool())
     val debugWbRd = Output(UInt(5.W))
     val debugWbData = Output(UInt(32.W))
@@ -29,7 +29,7 @@ class LumaFixV extends Module {
   io.dmem.reqWData := core.io.dmem.reqWData
   io.dmem.reqWMask := core.io.dmem.reqWMask
 
-  io.debugPc := core.io.debugPc
+  io.debugPC := core.io.debugPC
   io.debugWbValid := core.io.debugWbValid
   io.debugWbRd := core.io.debugWbRd
   io.debugWbData := core.io.debugWbData

@@ -11,7 +11,7 @@ class Alu extends Module {
     val out = Output(UInt(32.W))
   })
 
-  val shamt = io.rhs(4, 0)
+  val shiftAmount = io.rhs(4, 0)
 
   io.out := MuxLookup(
     io.op,
@@ -23,9 +23,9 @@ class Alu extends Module {
       AluOp.and -> (io.lhs & io.rhs),
       AluOp.or -> (io.lhs | io.rhs),
       AluOp.xor -> (io.lhs ^ io.rhs),
-      AluOp.sll -> (io.lhs << shamt)(31, 0),
-      AluOp.srl -> (io.lhs >> shamt),
-      AluOp.sra -> (io.lhs.asSInt >> shamt).asUInt,
+      AluOp.sll -> (io.lhs << shiftAmount)(31, 0),
+      AluOp.srl -> (io.lhs >> shiftAmount),
+      AluOp.sra -> (io.lhs.asSInt >> shiftAmount).asUInt,
       AluOp.slt -> (io.lhs.asSInt < io.rhs.asSInt).asUInt,
       AluOp.sltu -> (io.lhs < io.rhs).asUInt,
       AluOp.copyB -> io.rhs

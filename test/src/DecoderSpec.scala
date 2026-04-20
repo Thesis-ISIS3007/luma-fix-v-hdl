@@ -12,7 +12,7 @@ class DecoderProbe extends Module {
     val rs1Used = Output(Bool())
     val rs2Used = Output(Bool())
     val rdWrite = Output(Bool())
-    val aluSrc1Pc = Output(Bool())
+    val aluSrc1PC = Output(Bool())
     val aluSrc2Imm = Output(Bool())
     val aluOp = Output(UInt(4.W))
     val branch = Output(Bool())
@@ -32,7 +32,7 @@ class DecoderProbe extends Module {
   io.rs1Used := dec.ctrl.rs1Used
   io.rs2Used := dec.ctrl.rs2Used
   io.rdWrite := dec.ctrl.rdWrite
-  io.aluSrc1Pc := dec.ctrl.aluSrc1Pc
+  io.aluSrc1PC := dec.ctrl.aluSrc1PC
   io.aluSrc2Imm := dec.ctrl.aluSrc2Imm
   io.aluOp := dec.ctrl.aluOp.asUInt
   io.branch := dec.ctrl.branch
@@ -86,7 +86,7 @@ class DecoderSpec extends AnyFunSpec with ChiselSim {
         c.clock.step()
         c.io.jump.expect(true.B)
         c.io.jumpReg.expect(true.B)
-        c.io.wbSel.expect(RV32IDecode.WbSelPc4)
+        c.io.wbSel.expect(RV32IDecode.WbSelPC4)
 
         c.io.inst.poke(0.U)
         c.clock.step()

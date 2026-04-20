@@ -43,7 +43,7 @@ class AluSpec extends AnyFunSpec with ChiselSim {
         c.io.lhs.poke(1.U)
         c.io.rhs.poke(4.U)
         c.clock.step()
-        c.io.out.expect(16.U)
+        c.io.out.expect(16.U) // 1 << 4
 
         c.io.op.poke(AluOp.srl)
         c.io.lhs.poke("h80000000".U)

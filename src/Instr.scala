@@ -28,7 +28,7 @@ class DecodeSignals extends Bundle {
   val rs1Used = Bool()
   val rs2Used = Bool()
   val rdWrite = Bool()
-  val aluSrc1Pc = Bool()
+  val aluSrc1PC = Bool()
   val aluSrc2Imm = Bool()
   val aluOp = AluOp()
   val immSel = ImmSel()
@@ -54,7 +54,7 @@ class DecodedInstruction extends Bundle {
 object RV32IDecode {
   val WbSelAlu: UInt = 0.U(2.W)
   val WbSelMem: UInt = 1.U(2.W)
-  val WbSelPc4: UInt = 2.U(2.W)
+  val WbSelPC4: UInt = 2.U(2.W)
 }
 
 object ImmGen {
@@ -107,7 +107,7 @@ object RV32IDecoder {
     decoded.ctrl.rs1Used := false.B
     decoded.ctrl.rs2Used := false.B
     decoded.ctrl.rdWrite := false.B
-    decoded.ctrl.aluSrc1Pc := false.B
+    decoded.ctrl.aluSrc1PC := false.B
     decoded.ctrl.aluSrc2Imm := false.B
     decoded.ctrl.aluOp := AluOp.add
     decoded.ctrl.immSel := ImmSel.i
@@ -131,7 +131,7 @@ object RV32IDecoder {
       is(RV32IOpcode.AUIPC) {
         decoded.ctrl.illegal := false.B
         decoded.ctrl.rdWrite := true.B
-        decoded.ctrl.aluSrc1Pc := true.B
+        decoded.ctrl.aluSrc1PC := true.B
         decoded.ctrl.aluSrc2Imm := true.B
         decoded.ctrl.aluOp := AluOp.add
         decoded.ctrl.immSel := ImmSel.u
@@ -141,7 +141,7 @@ object RV32IDecoder {
         decoded.ctrl.rdWrite := true.B
         decoded.ctrl.jump := true.B
         decoded.ctrl.immSel := ImmSel.j
-        decoded.ctrl.wbSel := RV32IDecode.WbSelPc4
+        decoded.ctrl.wbSel := RV32IDecode.WbSelPC4
       }
       is(RV32IOpcode.JALR) {
         decoded.ctrl.illegal := false.B
@@ -150,7 +150,7 @@ object RV32IDecoder {
         decoded.ctrl.jump := true.B
         decoded.ctrl.jumpReg := true.B
         decoded.ctrl.immSel := ImmSel.i
-        decoded.ctrl.wbSel := RV32IDecode.WbSelPc4
+        decoded.ctrl.wbSel := RV32IDecode.WbSelPC4
       }
       is(RV32IOpcode.BRANCH) {
         decoded.ctrl.illegal := false.B
