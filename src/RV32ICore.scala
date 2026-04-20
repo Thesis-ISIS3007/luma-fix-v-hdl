@@ -52,6 +52,43 @@ class MemWbPipe extends Bundle {
   val rdWrite = Bool()
 }
 
+object BranchUnit {
+  def apply(funct3: UInt, rs1: UInt, rs2: UInt): Bool = {
+    MuxLookup(funct3, false.B)(
+      Seq(
+        RV32IBranchFunct3.BEQ -> (rs1 === rs2),
+        RV32IBranchFunct3.BNE -> (rs1 =/= rs2),
+        RV32IBranchFunct3.BLT -> (rs1.asSInt < rs2.asSInt),
+        RV32IBranchFunct3.BGE -> (rs1.asSInt >= rs2.asSInt),
+        RV32IBranchFunct3.BLTU -> (rs1 < rs2),
+        RV32IBranchFunct3.BGEU -> (rs1 >= rs2)
+      )
+    )
+  }
+}
+
+object ForwardingUnit {
+  def apply(
+      regVal: UInt,
+      regAddr: UInt,
+      exCanFwd: Bool,
+      exRd: UInt,
+      exData: UInt,
+      wbCanFwd: Bool,
+      wbRd: UInt,
+      wbData: UInt
+  ): UInt = {
+    val out = Wire(UInt(32.W))
+    out := regVal
+    when(exCanFwd && (exRd === regAddr)) {
+      out := exData
+    }.elsewhen(wbCanFwd && (wbRd === regAddr)) {
+      out := wbData
+    }
+    out
+  }
+}
+
 class RV32ICore(resetVector: BigInt = 0) extends Module {
   val io = IO(new Bundle {
     val imem = new InstrBusIO
@@ -97,34 +134,28 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
     exMemValid && exMem.ctrl.rdWrite && !exMem.ctrl.memRead && (exMem.rd =/= 0.U)
   val wbCanForward = memWbValid && memWb.rdWrite && (memWb.rd =/= 0.U)
 
-  val exRs1 = Wire(UInt(32.W))
-  val exRs2 = Wire(UInt(32.W))
+  val exRs1 = ForwardingUnit(
+    idEx.rs1Val,
+    idEx.rs1,
+    exCanForward,
+    exMem.rd,
+    exMem.aluRes,
+    wbCanForward,
+    memWb.rd,
+    memWb.wbData
+  )
+  val exRs2 = ForwardingUnit(
+    idEx.rs2Val,
+    idEx.rs2,
+    exCanForward,
+    exMem.rd,
+    exMem.aluRes,
+    wbCanForward,
+    memWb.rd,
+    memWb.wbData
+  )
 
-  exRs1 := idEx.rs1Val
-  when(exCanForward && (exMem.rd === idEx.rs1)) {
-    exRs1 := exMem.aluRes
-  }.elsewhen(wbCanForward && (memWb.rd === idEx.rs1)) {
-    exRs1 := memWb.wbData
-  }
-
-  exRs2 := idEx.rs2Val
-  when(exCanForward && (exMem.rd === idEx.rs2)) {
-    exRs2 := exMem.aluRes
-  }.elsewhen(wbCanForward && (memWb.rd === idEx.rs2)) {
-    exRs2 := memWb.wbData
-  }
-
-  val branchTaken = WireDefault(false.B)
-  when(idEx.ctrl.branch) {
-    switch(idEx.funct3) {
-      is("b000".U) { branchTaken := exRs1 === exRs2 }
-      is("b001".U) { branchTaken := exRs1 =/= exRs2 }
-      is("b100".U) { branchTaken := exRs1.asSInt < exRs2.asSInt }
-      is("b101".U) { branchTaken := exRs1.asSInt >= exRs2.asSInt }
-      is("b110".U) { branchTaken := exRs1 < exRs2 }
-      is("b111".U) { branchTaken := exRs1 >= exRs2 }
-    }
-  }
+  val branchTaken = idEx.ctrl.branch && BranchUnit(idEx.funct3, exRs1, exRs2)
 
   val exJumpTaken = idEx.ctrl.jump || (idEx.ctrl.branch && branchTaken)
   val jumpBase = Mux(idEx.ctrl.jumpReg, exRs1, idEx.pc)
@@ -158,21 +189,21 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   val loadData = Wire(UInt(32.W))
   loadData := io.dmem.resp.bits
   switch(exMem.funct3) {
-    is("b000".U) {
+    is(RV32IMemFunct3.B) {
       loadData := Cat(
         Fill(24, loadByte(7) && !exMem.ctrl.memUnsigned),
         loadByte
       )
     }
-    is("b001".U) {
+    is(RV32IMemFunct3.H) {
       loadData := Cat(
         Fill(16, loadHalf(15) && !exMem.ctrl.memUnsigned),
         loadHalf
       )
     }
-    is("b010".U) { loadData := io.dmem.resp.bits }
-    is("b100".U) { loadData := Cat(0.U(24.W), loadByte) }
-    is("b101".U) { loadData := Cat(0.U(16.W), loadHalf) }
+    is(RV32IMemFunct3.W) { loadData := io.dmem.resp.bits }
+    is(RV32IMemFunct3.BU) { loadData := Cat(0.U(24.W), loadByte) }
+    is(RV32IMemFunct3.HU) { loadData := Cat(0.U(16.W), loadHalf) }
   }
 
   val memAccess = exMem.ctrl.memRead || exMem.ctrl.memWrite
