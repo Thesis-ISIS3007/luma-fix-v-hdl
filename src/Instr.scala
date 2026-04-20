@@ -51,6 +51,12 @@ object RV32IMemFunct3 {
   val HU: UInt = "b101".U(3.W)
 }
 
+object RV32IMemSize {
+  val Byte: UInt = 0.U(2.W)
+  val Half: UInt = 1.U(2.W)
+  val Word: UInt = 2.U(2.W)
+}
+
 class DecodeSignals extends Bundle {
   val illegal = Bool()
   val rs1Used = Bool()
@@ -196,13 +202,13 @@ object RV32IDecoder {
         decoded.ctrl.immSel := ImmSel.i
         decoded.ctrl.memRead := true.B
         decoded.ctrl.memUnsigned := funct3(2)
-        decoded.ctrl.memSize := MuxLookup(funct3, 2.U)(
+        decoded.ctrl.memSize := MuxLookup(funct3, RV32IMemSize.Word)(
           Seq(
-            RV32IMemFunct3.B -> 0.U,
-            RV32IMemFunct3.H -> 1.U,
-            RV32IMemFunct3.W -> 2.U,
-            RV32IMemFunct3.BU -> 0.U,
-            RV32IMemFunct3.HU -> 1.U
+            RV32IMemFunct3.B -> RV32IMemSize.Byte,
+            RV32IMemFunct3.H -> RV32IMemSize.Half,
+            RV32IMemFunct3.W -> RV32IMemSize.Word,
+            RV32IMemFunct3.BU -> RV32IMemSize.Byte,
+            RV32IMemFunct3.HU -> RV32IMemSize.Half
           )
         )
         decoded.ctrl.wbSel := RV32IDecode.WbSelMem
@@ -215,11 +221,11 @@ object RV32IDecoder {
         decoded.ctrl.aluOp := AluOp.add
         decoded.ctrl.immSel := ImmSel.s
         decoded.ctrl.memWrite := true.B
-        decoded.ctrl.memSize := MuxLookup(funct3, 2.U)(
+        decoded.ctrl.memSize := MuxLookup(funct3, RV32IMemSize.Word)(
           Seq(
-            RV32IMemFunct3.B -> 0.U,
-            RV32IMemFunct3.H -> 1.U,
-            RV32IMemFunct3.W -> 2.U
+            RV32IMemFunct3.B -> RV32IMemSize.Byte,
+            RV32IMemFunct3.H -> RV32IMemSize.Half,
+            RV32IMemFunct3.W -> RV32IMemSize.Word
           )
         )
       }

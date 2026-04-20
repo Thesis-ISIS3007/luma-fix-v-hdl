@@ -172,14 +172,11 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
 
   val storeShift = exMem.aluRes(1, 0)
   val storeWData = (exMem.rs2Val << (storeShift << 3))(31, 0)
-  val storeMask = MuxLookup(
-    exMem.ctrl.memSize,
-    "b1111".U
-  )(
+  val storeMask = MuxLookup(exMem.ctrl.memSize, "b1111".U)(
     Seq(
-      0.U -> (1.U(4.W) << storeShift),
-      1.U -> Mux(storeShift(1), "b1100".U, "b0011".U),
-      2.U -> "b1111".U
+      RV32IMemSize.Byte -> (1.U(4.W) << storeShift),
+      RV32IMemSize.Half -> Mux(storeShift(1), "b1100".U, "b0011".U),
+      RV32IMemSize.Word -> "b1111".U
     )
   )
 
