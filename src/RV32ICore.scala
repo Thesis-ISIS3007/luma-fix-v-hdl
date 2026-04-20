@@ -89,6 +89,60 @@ object ForwardingUnit {
   }
 }
 
+object HazardUnit {
+  def apply(
+      idExValid: Bool,
+      idExMemRead: Bool,
+      idExRd: UInt,
+      rs1Used: Bool,
+      rs1: UInt,
+      rs2Used: Bool,
+      rs2: UInt
+  ): Bool =
+    idExValid && idExMemRead && (idExRd =/= 0.U) &&
+      ((rs1Used && (rs1 === idExRd)) || (rs2Used && (rs2 === idExRd)))
+}
+
+object JumpUnit {
+  def apply(jumpReg: Bool, rs1: UInt, pc: UInt, imm: UInt): UInt = {
+    val raw = Mux(jumpReg, rs1, pc) + imm
+    Mux(jumpReg, Cat(raw(31, 1), 0.U(1.W)), raw)
+  }
+}
+
+object StoreUnit {
+  def apply(addr: UInt, data: UInt, memSize: UInt): (UInt, UInt) = {
+    val shift = addr(1, 0)
+    val wData = (data << (shift << 3))(31, 0)
+    val wMask = MuxLookup(memSize, "b1111".U)(
+      Seq(
+        RV32IMemSize.Byte -> (1.U(4.W) << shift),
+        RV32IMemSize.Half -> Mux(shift(1), "b1100".U, "b0011".U),
+        RV32IMemSize.Word -> "b1111".U
+      )
+    )
+    (wData, wMask)
+  }
+}
+
+object LoadUnit {
+  def apply(rawData: UInt, addr: UInt, funct3: UInt, unsigned: Bool): UInt = {
+    val shift = addr(1, 0)
+    val byte = (rawData >> (shift << 3))(7, 0)
+    val half = (rawData >> (shift(1) << 4))(15, 0)
+    val out = Wire(UInt(32.W))
+    out := rawData
+    switch(funct3) {
+      is(RV32IMemFunct3.B) { out := Cat(Fill(24, byte(7) && !unsigned), byte) }
+      is(RV32IMemFunct3.H) { out := Cat(Fill(16, half(15) && !unsigned), half) }
+      is(RV32IMemFunct3.W) { out := rawData }
+      is(RV32IMemFunct3.BU) { out := Cat(0.U(24.W), byte) }
+      is(RV32IMemFunct3.HU) { out := Cat(0.U(16.W), half) }
+    }
+    out
+  }
+}
+
 class RV32ICore(resetVector: BigInt = 0) extends Module {
   val io = IO(new Bundle {
     val imem = new InstrBusIO
@@ -125,9 +179,14 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   regFile.io.rdData := memWb.wbData
   regFile.io.rdWrite := memWbValid && memWb.rdWrite
 
-  val loadUseHazard = idExValid && idEx.ctrl.memRead && (idEx.rd =/= 0.U) && (
-    (decode.ctrl.rs1Used && (decode.rs1 === idEx.rd)) ||
-      (decode.ctrl.rs2Used && (decode.rs2 === idEx.rd))
+  val loadUseHazard = HazardUnit(
+    idExValid,
+    idEx.ctrl.memRead,
+    idEx.rd,
+    decode.ctrl.rs1Used,
+    decode.rs1,
+    decode.ctrl.rs2Used,
+    decode.rs2
   )
 
   val exCanForward =
@@ -158,10 +217,7 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   val branchTaken = idEx.ctrl.branch && BranchUnit(idEx.funct3, exRs1, exRs2)
 
   val exJumpTaken = idEx.ctrl.jump || (idEx.ctrl.branch && branchTaken)
-  val jumpBase = Mux(idEx.ctrl.jumpReg, exRs1, idEx.pc)
-  val jumpTargetRaw = jumpBase + idEx.imm
-  val jumpTarget =
-    Mux(idEx.ctrl.jumpReg, Cat(jumpTargetRaw(31, 1), 0.U(1.W)), jumpTargetRaw)
+  val jumpTarget = JumpUnit(idEx.ctrl.jumpReg, exRs1, idEx.pc, idEx.imm)
 
   val exOp1 = Mux(idEx.ctrl.aluSrc1PC, idEx.pc, exRs1)
   val exOp2 = Mux(idEx.ctrl.aluSrc2Imm, idEx.imm, exRs2)
@@ -170,38 +226,15 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   alu.io.lhs := exOp1
   alu.io.rhs := exOp2
 
-  val storeShift = exMem.aluRes(1, 0)
-  val storeWData = (exMem.rs2Val << (storeShift << 3))(31, 0)
-  val storeMask = MuxLookup(exMem.ctrl.memSize, "b1111".U)(
-    Seq(
-      RV32IMemSize.Byte -> (1.U(4.W) << storeShift),
-      RV32IMemSize.Half -> Mux(storeShift(1), "b1100".U, "b0011".U),
-      RV32IMemSize.Word -> "b1111".U
-    )
-  )
+  val (storeWData, storeMask) =
+    StoreUnit(exMem.aluRes, exMem.rs2Val, exMem.ctrl.memSize)
 
-  val loadShift = exMem.aluRes(1, 0)
-  val loadByte = (io.dmem.resp.bits >> (loadShift << 3))(7, 0)
-  val loadHalf = (io.dmem.resp.bits >> (loadShift(1) << 4))(15, 0)
-  val loadData = Wire(UInt(32.W))
-  loadData := io.dmem.resp.bits
-  switch(exMem.funct3) {
-    is(RV32IMemFunct3.B) {
-      loadData := Cat(
-        Fill(24, loadByte(7) && !exMem.ctrl.memUnsigned),
-        loadByte
-      )
-    }
-    is(RV32IMemFunct3.H) {
-      loadData := Cat(
-        Fill(16, loadHalf(15) && !exMem.ctrl.memUnsigned),
-        loadHalf
-      )
-    }
-    is(RV32IMemFunct3.W) { loadData := io.dmem.resp.bits }
-    is(RV32IMemFunct3.BU) { loadData := Cat(0.U(24.W), loadByte) }
-    is(RV32IMemFunct3.HU) { loadData := Cat(0.U(16.W), loadHalf) }
-  }
+  val loadData = LoadUnit(
+    io.dmem.resp.bits,
+    exMem.aluRes,
+    exMem.funct3,
+    exMem.ctrl.memUnsigned
+  )
 
   val memAccess = exMem.ctrl.memRead || exMem.ctrl.memWrite
   val memRespNeeded = exMem.ctrl.memRead

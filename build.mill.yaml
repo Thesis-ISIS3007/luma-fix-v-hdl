@@ -4,7 +4,7 @@ mill-build:
   mvnDeps:
     - com.goyeau::mill-scalafix_mill1:0.6.0
 
-mainClass: prototype.Main
+mainClass: luma_fix_v.Main
 extends:
   - ScalaModule
   - com.goyeau.mill.scalafix.ScalafixModule
