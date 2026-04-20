@@ -1,4 +1,4 @@
-package prototype
+package luma_fix_v
 
 import chisel3._
 import chisel3.util._
@@ -11,7 +11,7 @@ object ImmSel extends ChiselEnum {
   val i, s, b, u, j = Value
 }
 
-object Rv32iOpcode {
+object RV32IOpcode {
   val LUI: UInt = "b0110111".U(7.W)
   val AUIPC: UInt = "b0010111".U(7.W)
   val JAL: UInt = "b1101111".U(7.W)
@@ -51,7 +51,7 @@ class DecodedInstruction extends Bundle {
   val ctrl = new DecodeSignals
 }
 
-object Rv32iDecode {
+object RV32IDecode {
   val WbSelAlu: UInt = 0.U(2.W)
   val WbSelMem: UInt = 1.U(2.W)
   val WbSelPc4: UInt = 2.U(2.W)
@@ -65,27 +65,31 @@ object ImmGen {
 
   def i(inst: UInt): UInt = signExtend(inst(31, 20), 12)
   def s(inst: UInt): UInt = signExtend(Cat(inst(31, 25), inst(11, 7)), 12)
-  def b(inst: UInt): UInt = signExtend(Cat(inst(31), inst(7), inst(30, 25), inst(11, 8), 0.U(1.W)), 13)
+  def b(inst: UInt): UInt =
+    signExtend(Cat(inst(31), inst(7), inst(30, 25), inst(11, 8), 0.U(1.W)), 13)
   def u(inst: UInt): UInt = Cat(inst(31, 12), 0.U(12.W))
-  def j(inst: UInt): UInt = signExtend(Cat(inst(31), inst(19, 12), inst(20), inst(30, 21), 0.U(1.W)), 21)
+  def j(inst: UInt): UInt = signExtend(
+    Cat(inst(31), inst(19, 12), inst(20), inst(30, 21), 0.U(1.W)),
+    21
+  )
 
   def select(inst: UInt, immSel: ImmSel.Type): UInt = {
     MuxLookup(
-      immSel.asUInt,
+      immSel,
       i(inst)
     )(
       Seq(
-        ImmSel.i.asUInt -> i(inst),
-        ImmSel.s.asUInt -> s(inst),
-        ImmSel.b.asUInt -> b(inst),
-        ImmSel.u.asUInt -> u(inst),
-        ImmSel.j.asUInt -> j(inst)
+        ImmSel.i -> i(inst),
+        ImmSel.s -> s(inst),
+        ImmSel.b -> b(inst),
+        ImmSel.u -> u(inst),
+        ImmSel.j -> j(inst)
       )
     )
   }
 }
 
-object Rv32iDecoder {
+object RV32IDecoder {
   def decode(inst: UInt): DecodedInstruction = {
     val decoded = Wire(new DecodedInstruction)
     val opcode = inst(6, 0)
@@ -114,17 +118,17 @@ object Rv32iDecoder {
     decoded.ctrl.memWrite := false.B
     decoded.ctrl.memUnsigned := false.B
     decoded.ctrl.memSize := 2.U
-    decoded.ctrl.wbSel := Rv32iDecode.WbSelAlu
+    decoded.ctrl.wbSel := RV32IDecode.WbSelAlu
 
     switch(opcode) {
-      is(Rv32iOpcode.LUI) {
+      is(RV32IOpcode.LUI) {
         decoded.ctrl.illegal := false.B
         decoded.ctrl.rdWrite := true.B
         decoded.ctrl.aluSrc2Imm := true.B
         decoded.ctrl.aluOp := AluOp.copyB
         decoded.ctrl.immSel := ImmSel.u
       }
-      is(Rv32iOpcode.AUIPC) {
+      is(RV32IOpcode.AUIPC) {
         decoded.ctrl.illegal := false.B
         decoded.ctrl.rdWrite := true.B
         decoded.ctrl.aluSrc1Pc := true.B
@@ -132,30 +136,30 @@ object Rv32iDecoder {
         decoded.ctrl.aluOp := AluOp.add
         decoded.ctrl.immSel := ImmSel.u
       }
-      is(Rv32iOpcode.JAL) {
+      is(RV32IOpcode.JAL) {
         decoded.ctrl.illegal := false.B
         decoded.ctrl.rdWrite := true.B
         decoded.ctrl.jump := true.B
         decoded.ctrl.immSel := ImmSel.j
-        decoded.ctrl.wbSel := Rv32iDecode.WbSelPc4
+        decoded.ctrl.wbSel := RV32IDecode.WbSelPc4
       }
-      is(Rv32iOpcode.JALR) {
+      is(RV32IOpcode.JALR) {
         decoded.ctrl.illegal := false.B
         decoded.ctrl.rs1Used := true.B
         decoded.ctrl.rdWrite := true.B
         decoded.ctrl.jump := true.B
         decoded.ctrl.jumpReg := true.B
         decoded.ctrl.immSel := ImmSel.i
-        decoded.ctrl.wbSel := Rv32iDecode.WbSelPc4
+        decoded.ctrl.wbSel := RV32IDecode.WbSelPc4
       }
-      is(Rv32iOpcode.BRANCH) {
+      is(RV32IOpcode.BRANCH) {
         decoded.ctrl.illegal := false.B
         decoded.ctrl.rs1Used := true.B
         decoded.ctrl.rs2Used := true.B
         decoded.ctrl.branch := true.B
         decoded.ctrl.immSel := ImmSel.b
       }
-      is(Rv32iOpcode.LOAD) {
+      is(RV32IOpcode.LOAD) {
         decoded.ctrl.illegal := false.B
         decoded.ctrl.rs1Used := true.B
         decoded.ctrl.rdWrite := true.B
@@ -164,16 +168,18 @@ object Rv32iDecoder {
         decoded.ctrl.immSel := ImmSel.i
         decoded.ctrl.memRead := true.B
         decoded.ctrl.memUnsigned := funct3(2)
-        decoded.ctrl.memSize := MuxLookup(funct3, 2.U)(Seq(
-          "b000".U -> 0.U,
-          "b001".U -> 1.U,
-          "b010".U -> 2.U,
-          "b100".U -> 0.U,
-          "b101".U -> 1.U
-        ))
-        decoded.ctrl.wbSel := Rv32iDecode.WbSelMem
+        decoded.ctrl.memSize := MuxLookup(funct3, 2.U)(
+          Seq(
+            "b000".U -> 0.U,
+            "b001".U -> 1.U,
+            "b010".U -> 2.U,
+            "b100".U -> 0.U,
+            "b101".U -> 1.U
+          )
+        )
+        decoded.ctrl.wbSel := RV32IDecode.WbSelMem
       }
-      is(Rv32iOpcode.STORE) {
+      is(RV32IOpcode.STORE) {
         decoded.ctrl.illegal := false.B
         decoded.ctrl.rs1Used := true.B
         decoded.ctrl.rs2Used := true.B
@@ -181,13 +187,15 @@ object Rv32iDecoder {
         decoded.ctrl.aluOp := AluOp.add
         decoded.ctrl.immSel := ImmSel.s
         decoded.ctrl.memWrite := true.B
-        decoded.ctrl.memSize := MuxLookup(funct3, 2.U)(Seq(
-          "b000".U -> 0.U,
-          "b001".U -> 1.U,
-          "b010".U -> 2.U
-        ))
+        decoded.ctrl.memSize := MuxLookup(funct3, 2.U)(
+          Seq(
+            "b000".U -> 0.U,
+            "b001".U -> 1.U,
+            "b010".U -> 2.U
+          )
+        )
       }
-      is(Rv32iOpcode.OPIMM) {
+      is(RV32IOpcode.OPIMM) {
         decoded.ctrl.illegal := false.B
         decoded.ctrl.rs1Used := true.B
         decoded.ctrl.rdWrite := true.B
@@ -206,18 +214,22 @@ object Rv32iDecoder {
           }
         }
       }
-      is(Rv32iOpcode.OP) {
+      is(RV32IOpcode.OP) {
         decoded.ctrl.illegal := false.B
         decoded.ctrl.rs1Used := true.B
         decoded.ctrl.rs2Used := true.B
         decoded.ctrl.rdWrite := true.B
         switch(funct3) {
-          is("b000".U) { decoded.ctrl.aluOp := Mux(bit30, AluOp.sub, AluOp.add) }
+          is("b000".U) {
+            decoded.ctrl.aluOp := Mux(bit30, AluOp.sub, AluOp.add)
+          }
           is("b001".U) { decoded.ctrl.aluOp := AluOp.sll }
           is("b010".U) { decoded.ctrl.aluOp := AluOp.slt }
           is("b011".U) { decoded.ctrl.aluOp := AluOp.sltu }
           is("b100".U) { decoded.ctrl.aluOp := AluOp.xor }
-          is("b101".U) { decoded.ctrl.aluOp := Mux(bit30, AluOp.sra, AluOp.srl) }
+          is("b101".U) {
+            decoded.ctrl.aluOp := Mux(bit30, AluOp.sra, AluOp.srl)
+          }
           is("b110".U) { decoded.ctrl.aluOp := AluOp.or }
           is("b111".U) { decoded.ctrl.aluOp := AluOp.and }
         }

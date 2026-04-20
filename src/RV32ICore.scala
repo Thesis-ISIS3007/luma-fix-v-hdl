@@ -1,4 +1,4 @@
-package prototype
+package luma_fix_v
 
 import chisel3._
 import chisel3.util._
@@ -82,7 +82,7 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   val memWbValid = RegInit(false.B)
 
   val fetchedInst = io.imem.respData
-  val decode = Rv32iDecoder.decode(ifId.inst)
+  val decode = RV32IDecoder.decode(ifId.inst)
 
   regFile.io.rs1Addr := decode.rs1
   regFile.io.rs2Addr := decode.rs2
@@ -95,7 +95,8 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
       (decode.ctrl.rs2Used && (decode.rs2 === idEx.rd))
   )
 
-  val exCanForward = exMemValid && exMem.ctrl.rdWrite && !exMem.ctrl.memRead && (exMem.rd =/= 0.U)
+  val exCanForward =
+    exMemValid && exMem.ctrl.rdWrite && !exMem.ctrl.memRead && (exMem.rd =/= 0.U)
   val wbCanForward = memWbValid && memWb.rdWrite && (memWb.rd =/= 0.U)
 
   val exRs1 = Wire(UInt(32.W))
@@ -130,7 +131,8 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   val exJumpTaken = idEx.ctrl.jump || (idEx.ctrl.branch && branchTaken)
   val jumpBase = Mux(idEx.ctrl.jumpReg, exRs1, idEx.pc)
   val jumpTargetRaw = jumpBase + idEx.imm
-  val jumpTarget = Mux(idEx.ctrl.jumpReg, Cat(jumpTargetRaw(31, 1), 0.U(1.W)), jumpTargetRaw)
+  val jumpTarget =
+    Mux(idEx.ctrl.jumpReg, Cat(jumpTargetRaw(31, 1), 0.U(1.W)), jumpTargetRaw)
 
   val exOp1 = Mux(idEx.ctrl.aluSrc1Pc, idEx.pc, exRs1)
   val exOp2 = Mux(idEx.ctrl.aluSrc2Imm, idEx.imm, exRs2)
@@ -158,8 +160,18 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   val loadData = Wire(UInt(32.W))
   loadData := io.dmem.respData
   switch(exMem.funct3) {
-    is("b000".U) { loadData := Cat(Fill(24, loadByte(7) && !exMem.ctrl.memUnsigned), loadByte) }
-    is("b001".U) { loadData := Cat(Fill(16, loadHalf(15) && !exMem.ctrl.memUnsigned), loadHalf) }
+    is("b000".U) {
+      loadData := Cat(
+        Fill(24, loadByte(7) && !exMem.ctrl.memUnsigned),
+        loadByte
+      )
+    }
+    is("b001".U) {
+      loadData := Cat(
+        Fill(16, loadHalf(15) && !exMem.ctrl.memUnsigned),
+        loadHalf
+      )
+    }
     is("b010".U) { loadData := io.dmem.respData }
     is("b100".U) { loadData := Cat(0.U(24.W), loadByte) }
     is("b101".U) { loadData := Cat(0.U(16.W), loadHalf) }
@@ -229,9 +241,9 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
     exMem.aluRes
   )(
     Seq(
-      Rv32iDecode.WbSelAlu -> exMem.aluRes,
-      Rv32iDecode.WbSelMem -> loadData,
-      Rv32iDecode.WbSelPc4 -> exMem.pc4
+      RV32IDecode.WbSelAlu -> exMem.aluRes,
+      RV32IDecode.WbSelMem -> loadData,
+      RV32IDecode.WbSelPc4 -> exMem.pc4
     )
   )
 

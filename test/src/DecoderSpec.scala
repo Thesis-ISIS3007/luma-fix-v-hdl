@@ -1,4 +1,4 @@
-package prototype
+package luma_fix_v
 
 import org.scalatest.funspec.AnyFunSpec
 
@@ -26,7 +26,7 @@ class DecoderProbe extends Module {
     val immI = Output(UInt(32.W))
   })
 
-  val dec = Rv32iDecoder.decode(io.inst)
+  val dec = RV32IDecoder.decode(io.inst)
 
   io.illegal := dec.ctrl.illegal
   io.rs1Used := dec.ctrl.rs1Used
@@ -47,7 +47,7 @@ class DecoderProbe extends Module {
 }
 
 class DecoderSpec extends AnyFunSpec with ChiselSim {
-  describe("Rv32iDecoder") {
+  describe("RV32IDecoder") {
     it("decodes addi and load/store class controls") {
       simulate(new DecoderProbe()) { c =>
         c.io.inst.poke("h00508193".U) // addi x3, x1, 5
@@ -65,7 +65,7 @@ class DecoderSpec extends AnyFunSpec with ChiselSim {
         c.io.memRead.expect(true.B)
         c.io.memWrite.expect(false.B)
         c.io.memSize.expect(2.U)
-        c.io.wbSel.expect(Rv32iDecode.WbSelMem)
+        c.io.wbSel.expect(RV32IDecode.WbSelMem)
 
         c.io.inst.poke("h00512623".U) // sw x5, 12(x2)
         c.clock.step()
@@ -86,7 +86,7 @@ class DecoderSpec extends AnyFunSpec with ChiselSim {
         c.clock.step()
         c.io.jump.expect(true.B)
         c.io.jumpReg.expect(true.B)
-        c.io.wbSel.expect(Rv32iDecode.WbSelPc4)
+        c.io.wbSel.expect(RV32IDecode.WbSelPc4)
 
         c.io.inst.poke(0.U)
         c.clock.step()
