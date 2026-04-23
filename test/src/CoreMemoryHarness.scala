@@ -3,7 +3,6 @@ package luma_fix_v
 import chisel3._
 import chisel3.util._
 import chisel3.util.experimental.loadMemoryFromFile
-import firrtl.annotations.MemoryLoadFileType
 
 class CoreMemoryHarness(
     programFile: String,
@@ -33,6 +32,7 @@ class CoreMemoryHarness(
   val dmem = SyncReadMem(dmemWords, Vec(4, UInt(8.W)))
 
   loadMemoryFromFile(imem, programFile)
+  loadMemoryFromFile(dmem, programFile)
 
   val iWordAddr = core.io.imem.req.bits(iAddrWidth + 1, 2)
   core.io.imem.req.ready := true.B
@@ -40,8 +40,6 @@ class CoreMemoryHarness(
   core.io.imem.resp.bits := imem(iWordAddr)
 
   val dWordAddr = core.io.dmem.req.bits.addr(dAddrWidth + 1, 2)
-  val dIsRead = core.io.dmem.req.valid && !core.io.dmem.req.bits.write
-  val dReadVec = dmem.read(dWordAddr, dIsRead)
 
   val dWriteVec = Wire(Vec(4, UInt(8.W)))
   dWriteVec(0) := core.io.dmem.req.bits.wData(7, 0)
@@ -49,8 +47,25 @@ class CoreMemoryHarness(
   dWriteVec(2) := core.io.dmem.req.bits.wData(23, 16)
   dWriteVec(3) := core.io.dmem.req.bits.wData(31, 24)
 
+  // The dmem is a 1-cycle SyncReadMem so a read request issued at cycle T
+  // returns its data at cycle T+1. Track an in-flight read with a pending
+  // bit and only issue a fresh memory read on the first cycle that the core
+  // asserts a new request. This guarantees `resp.bits` always corresponds
+  // to the request whose response was just produced, even when the core
+  // holds the same request asserted across multiple stall cycles or issues
+  // back-to-back loads.
+  val readPending = RegInit(false.B)
+  val reqValid = core.io.dmem.req.valid
+  val isWrite = core.io.dmem.req.bits.write
+  val firstReadFire = reqValid && !isWrite && !readPending
+  val firstWriteFire = reqValid && isWrite && !readPending
+
+  readPending := firstReadFire
+
+  val dReadVec = dmem.read(dWordAddr, firstReadFire)
+
   core.io.dmem.req.ready := true.B
-  core.io.dmem.resp.valid := RegNext(dIsRead, false.B)
+  core.io.dmem.resp.valid := readPending
   core.io.dmem.resp.bits := Cat(
     dReadVec(3),
     dReadVec(2),
@@ -58,7 +73,7 @@ class CoreMemoryHarness(
     dReadVec(0)
   )
 
-  when(core.io.dmem.req.valid && core.io.dmem.req.bits.write) {
+  when(firstWriteFire) {
     dmem.write(dWordAddr, dWriteVec, core.io.dmem.req.bits.wMask.asBools)
   }
 

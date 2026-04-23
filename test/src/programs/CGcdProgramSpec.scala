@@ -4,6 +4,8 @@ import org.scalatest.funspec.AnyFunSpec
 
 import chisel3.simulator.scalatest.ChiselSim
 
+import test_utils._
+
 class CGcdProgramSpec
     extends AnyFunSpec
     with ChiselSim
@@ -14,7 +16,6 @@ class CGcdProgramSpec
         "/programs/c_gcd_smoke.hex",
         outAddr = 0x84,
         expected = 6,
-        cycles = 260
       )
     }
   }

@@ -3,7 +3,7 @@ package build.test
 import mill.*, scalalib.*
 
 object `package` extends build.ScalaTests, TestModule.ScalaTest {
-  def mvnDeps = Seq(mvn"org.scalatest::scalatest:3.2.19")
+  def mvnDeps = Seq(mvn"org.scalatest::scalatest:3.2.20")
 
   override def testArgsDefault: T[Seq[String]] = Task.Input {
     val sentinel = mill.api.BuildCtx.workspaceRoot / ".run-cbinary"

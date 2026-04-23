@@ -4,6 +4,8 @@ import org.scalatest.funspec.AnyFunSpec
 
 import chisel3.simulator.scalatest.ChiselSim
 
+import test_utils._
+
 class CAbiSmokeProgramSpec
     extends AnyFunSpec
     with ChiselSim
@@ -17,7 +19,6 @@ class CAbiSmokeProgramSpec
         "/programs/c_abi_smoke.hex",
         outAddr = 0x80,
         expected = 55,
-        cycles = 220
       )
     }
   }

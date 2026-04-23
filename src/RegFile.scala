@@ -15,8 +15,13 @@ class RegFile extends Module {
 
   val regs = RegInit(VecInit(Seq.fill(32)(0.U(32.W))))
 
-  io.rs1Data := Mux(io.rs1Addr === 0.U, 0.U, regs(io.rs1Addr))
-  io.rs2Data := Mux(io.rs2Addr === 0.U, 0.U, regs(io.rs2Addr))
+  private def readPort(addr: UInt): UInt = {
+    val bypass = io.rdWrite && (io.rdAddr =/= 0.U) && (io.rdAddr === addr)
+    Mux(addr === 0.U, 0.U, Mux(bypass, io.rdData, regs(addr)))
+  }
+
+  io.rs1Data := readPort(io.rs1Addr)
+  io.rs2Data := readPort(io.rs2Addr)
 
   when(io.rdWrite && io.rdAddr =/= 0.U) {
     regs(io.rdAddr) := io.rdData

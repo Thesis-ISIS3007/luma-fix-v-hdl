@@ -4,6 +4,8 @@ import org.scalatest.funspec.AnyFunSpec
 
 import chisel3.simulator.scalatest.ChiselSim
 
+import test_utils._
+
 class CProgramsAnalogSpec
     extends AnyFunSpec
     with ChiselSim
