@@ -46,7 +46,10 @@ class FxProgramSpec extends AnyFunSpec with ChiselSim with ISATestSupport {
       loadConst(pb, 2, fx(2.25))
       pb.emit(fxAdd(3, 1, 2))
       runAndCheck(pb) { regs =>
-        assert(regs(3) == asUnsigned(fx(3.75)), s"x3 = 0x${regs(3).toString(16)}")
+        assert(
+          regs(3) == asUnsigned(fx(3.75)),
+          s"x3 = 0x${regs(3).toString(16)}"
+        )
       }
     }
 
@@ -97,7 +100,9 @@ class FxProgramSpec extends AnyFunSpec with ChiselSim with ISATestSupport {
       loadConst(pb, 1, 7)
       loadConst(pb, 2, fx(3.75))
       pb.emit(int2Fx(3, 1)) // 7 -> 7.0
-      pb.emit(fx2Int(4, 2)) // 3.75 -> 3 (arithmetic shift truncates toward -inf)
+      pb.emit(
+        fx2Int(4, 2)
+      ) // 3.75 -> 3 (arithmetic shift truncates toward -inf)
       pb.emit(int2Fx(5, 0)) // 0 -> 0
       runAndCheck(pb) { regs =>
         assert(regs(3) == asUnsigned(fx(7.0)))
@@ -160,11 +165,83 @@ class FxProgramSpec extends AnyFunSpec with ChiselSim with ISATestSupport {
 
     it("FXMUL wrap-around: 32767.0 * 2.0 overflows to -2.0 in 16Q16") {
       val pb = new ProgramBuilder()
-      loadConst(pb, 1, 0x7FFF0000L) // 32767.0
+      loadConst(pb, 1, 0x7fff0000L) // 32767.0
       loadConst(pb, 2, fx(2.0))
       pb.emit(fxMul(3, 1, 2))
       runAndCheck(pb) { regs =>
-        assert(regs(3) == asUnsigned(0xFFFE0000L))
+        assert(regs(3) == asUnsigned(0xfffe0000L))
+      }
+    }
+
+    // FXDIV uses the multi-cycle iterative divider: each instruction stalls
+    // the pipeline for ~34 cycles, so we bump maxCycles per program so the
+    // simulator has time to commit every writeback we expect.
+    it("FXDIV computes basic 16Q16 quotients") {
+      val pb = new ProgramBuilder()
+      loadConst(pb, 1, fx(6.0))
+      loadConst(pb, 2, fx(2.0))
+      loadConst(pb, 3, fx(1.0))
+      loadConst(pb, 4, fx(4.0))
+      pb.emit(fxDiv(5, 1, 2)) // 3.0
+      pb.emit(fxDiv(6, 3, 4)) // 0.25
+      runAndCheck(pb, maxCycles = 400) { regs =>
+        assert(
+          regs(5) == asUnsigned(fx(3.0)),
+          s"x5 = 0x${regs(5).toString(16)}"
+        )
+        assert(
+          regs(6) == asUnsigned(fx(0.25)),
+          s"x6 = 0x${regs(6).toString(16)}"
+        )
+      }
+    }
+
+    it("FXDIV handles negative operands and zero divisor") {
+      val pb = new ProgramBuilder()
+      loadConst(pb, 1, fx(-6.0))
+      loadConst(pb, 2, fx(2.0))
+      loadConst(pb, 3, fx(6.0))
+      loadConst(pb, 4, fx(-2.0))
+      loadConst(pb, 5, fx(1.0))
+      loadConst(pb, 6, 0)
+      pb.emit(fxDiv(7, 1, 2)) // -3.0
+      pb.emit(fxDiv(8, 3, 4)) // -3.0
+      pb.emit(fxDiv(9, 1, 4)) // 3.0
+      pb.emit(fxDiv(10, 5, 6)) // div by 0 -> 0
+      runAndCheck(pb, maxCycles = 600) { regs =>
+        assert(regs(7) == asUnsigned(fx(-3.0)))
+        assert(regs(8) == asUnsigned(fx(-3.0)))
+        assert(regs(9) == asUnsigned(fx(3.0)))
+        assert(regs(10) == 0)
+      }
+    }
+
+    it("Back-to-back FXDIV preserves divider isolation between issues") {
+      val pb = new ProgramBuilder()
+      loadConst(pb, 1, fx(8.0))
+      loadConst(pb, 2, fx(2.0))
+      loadConst(pb, 3, fx(9.0))
+      loadConst(pb, 4, fx(3.0))
+      pb.emit(fxDiv(5, 1, 2)) // 4.0
+      pb.emit(fxDiv(6, 3, 4)) // 3.0
+      pb.emit(fxAdd(7, 5, 6)) // 7.0 (also exercises forwarding from FXDIV)
+      runAndCheck(pb, maxCycles = 400) { regs =>
+        assert(regs(5) == asUnsigned(fx(4.0)))
+        assert(regs(6) == asUnsigned(fx(3.0)))
+        assert(regs(7) == asUnsigned(fx(7.0)))
+      }
+    }
+
+    it("FXDIV result is consumable by an immediately-following FXMUL") {
+      val pb = new ProgramBuilder()
+      loadConst(pb, 1, fx(10.0))
+      loadConst(pb, 2, fx(4.0))
+      loadConst(pb, 3, fx(2.0))
+      pb.emit(fxDiv(4, 1, 2)) // 2.5
+      pb.emit(fxMul(5, 4, 3)) // 5.0
+      runAndCheck(pb, maxCycles = 300) { regs =>
+        assert(regs(4) == asUnsigned(fx(2.5)))
+        assert(regs(5) == asUnsigned(fx(5.0)))
       }
     }
   }

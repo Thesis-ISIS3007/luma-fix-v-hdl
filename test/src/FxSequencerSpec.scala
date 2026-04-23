@@ -125,7 +125,9 @@ class FxSequencerSpec extends AnyFunSpec with ChiselSim {
       }
     }
 
-    it("expands FXABS into three micro-ops with scratch s0/s1 and last-on-step-2") {
+    it(
+      "expands FXABS into three micro-ops with scratch s0/s1 and last-on-step-2"
+    ) {
       simulate(new FxSequencerProbe()) { c =>
         // FXABS x10, x1
         driveCommon(c, fxAbs(10, 1).toLong)
@@ -202,12 +204,20 @@ class FxSequencerSpec extends AnyFunSpec with ChiselSim {
       }
     }
 
-    it("FXDIV is reserved and decoded as illegal in v1") {
+    it("FXDIV decodes as a single legal micro-op driving the fxdiv ALU op") {
       simulate(new FxSequencerProbe()) { c =>
         driveCommon(c, fxDiv(11, 1, 2).toLong)
         c.io.isFx.expect(true.B)
-        c.io.illegal.expect(true.B)
-        c.io.rdWrite.expect(false.B)
+        c.io.illegal.expect(false.B)
+        c.io.rdWrite.expect(true.B)
+        c.io.rs1Used.expect(true.B)
+        c.io.rs2Used.expect(true.B)
+        c.io.rs1.expect(1.U)
+        c.io.rs2.expect(2.U)
+        c.io.rd.expect(11.U)
+        c.io.aluOp.expect(AluOp.fxdiv.asUInt)
+        c.io.isLastMicroOp.expect(true.B)
+        c.io.holdFetch.expect(false.B)
       }
     }
   }

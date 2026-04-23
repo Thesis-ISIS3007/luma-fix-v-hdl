@@ -362,7 +362,11 @@ object FxDecoder {
         // FXADD/FXSUB: bit-identical to integer ADD/SUB on 16Q16.
         decoded.ctrl.illegal := false.B
         decoded.ctrl.rs2Used := true.B
-        decoded.ctrl.aluOp := Mux(funct7 === FxFunct7.FXSUB, AluOp.sub, AluOp.add)
+        decoded.ctrl.aluOp := Mux(
+          funct7 === FxFunct7.FXSUB,
+          AluOp.sub,
+          AluOp.add
+        )
       }
       is(FxFunct3.FXMUL) {
         // FXMUL: needs new ALU op (signed 32x32 -> >>16 truncate).
@@ -422,10 +426,11 @@ object FxDecoder {
         }
       }
       is(FxFunct3.FXDIV) {
-        // Phase 2 stretch goal. Decoded as illegal until the divider lands so
-        // the test suite can still flag accidental use.
-        decoded.ctrl.illegal := true.B
-        decoded.ctrl.rdWrite := false.B
+        // FXDIV: 1 architectural micro-op, but EX stalls the pipeline for 34
+        // cycles while the multi-cycle FxDivUnit produces the quotient.
+        decoded.ctrl.illegal := false.B
+        decoded.ctrl.rs2Used := true.B
+        decoded.ctrl.aluOp := AluOp.fxdiv
       }
     }
 

@@ -159,6 +159,7 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   val regFile = Module(new RegFile)
   val alu = Module(new Alu)
   val seq = Module(new FxSequencer)
+  val divUnit = Module(new FxDivUnit)
 
   val pc = RegInit(resetVector.U(32.W))
 
@@ -235,6 +236,32 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   alu.io.lhs := exOp1
   alu.io.rhs := exOp2
 
+  // FXDIV uses the multi-cycle divider parked next to the ALU. The divider
+  // captures its operands on `start`, so even though `exOp1`/`exOp2` may be
+  // forwarded values, they're stable while EX is stalled (the upstream stages
+  // are frozen by `exBusy`). `done` is a one-cycle pulse, so we latch the
+  // quotient locally to handle the case where MEM is also stalled and the
+  // result has to wait several extra cycles before it can move into EX/MEM.
+  val isFxDivInEx = idExValid && (idEx.ctrl.aluOp === AluOp.fxdiv)
+  val divResultLatched = RegInit(false.B)
+  val divResultData = Reg(UInt(32.W))
+  val divResultReady = divResultLatched || divUnit.io.done
+  val effectiveDivOut = Mux(divUnit.io.done, divUnit.io.out, divResultData)
+
+  // Only kick off a new FXDIV when no quotient is currently held and the unit
+  // is idle. This guarantees back-to-back FXDIVs each get a fresh sBusy run.
+  divUnit.io.start := isFxDivInEx && !divResultLatched && !divUnit.io.busy
+  divUnit.io.lhs := exOp1
+  divUnit.io.rhs := exOp2
+
+  // While FXDIV occupies EX without a result yet, stall the rest of the
+  // pipeline. Once a quotient is available (either fresh from `done` or held
+  // in `divResultLatched`), the FXDIV is allowed to move into EX/MEM.
+  val exBusy = isFxDivInEx && !divResultReady
+
+  // Use the divider's quotient instead of the ALU result for FXDIV.
+  val exAluResult = Mux(isFxDivInEx, effectiveDivOut, alu.io.out)
+
   val (storeWData, storeMask) =
     StoreUnit(exMem.aluRes, exMem.rs2Val, exMem.ctrl.memSize)
 
@@ -251,9 +278,16 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   val memRespReady = !memRespNeeded || io.dmem.resp.valid
   val memStageReady = !exMemValid || (memReqAccepted && memRespReady)
 
+  // pipeReady gates the ID->EX and EX->MEM register updates. It requires both
+  // the downstream MEM stage to be drainable AND any multi-cycle EX op (FXDIV)
+  // to have produced its result this cycle. memWb still gets fed straight
+  // from exMem so an in-flight load can drain even while FXDIV is stalling.
+  val pipeReady = memStageReady && !exBusy
+
   // While the FX sequencer is mid-sequence it holds fetch so the same FX
   // instruction stays latched in IF/ID and the next micro-op can be cracked.
-  val fetchBlocked = loadUseHazard || !memStageReady || seq.io.holdFetch
+  // FXDIV adds another fetch-block reason via pipeReady.
+  val fetchBlocked = loadUseHazard || !pipeReady || seq.io.holdFetch
   val fetchFire = io.imem.resp.valid && !fetchBlocked
 
   val flush = exJumpTaken && idExValid
@@ -278,15 +312,29 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
 
   val injectBubble = loadUseHazard || flush
   // The FX sequencer advances its step counter on every cycle that a micro-op
-  // actually commits to ID/EX (matches the !injectBubble && memStageReady &&
+  // actually commits to ID/EX (matches the !injectBubble && pipeReady &&
   // ifIdValid branch below). A flush resets the step instead.
-  seq.io.advance := memStageReady && !injectBubble && ifIdValid
+  seq.io.advance := pipeReady && !injectBubble && ifIdValid
   seq.io.flush := flush
+
+  // FXDIV result-latch bookkeeping. `done` is a 1-cycle pulse so we capture
+  // the quotient any time it fires, then clear the latch on the same cycle
+  // the FXDIV moves from ID/EX into EX/MEM (`pipeReady` && FXDIV in idEx).
+  // FXDIV cannot be the producer of a load-use hazard or a taken branch, so
+  // injectBubble is always false here and we don't need to handle it.
+  val divConsume = isFxDivInEx && pipeReady
+  when(divUnit.io.done) {
+    divResultLatched := true.B
+    divResultData := divUnit.io.out
+  }
+  when(divConsume) {
+    divResultLatched := false.B
+  }
 
   when(memStageReady) {
     when(injectBubble) {
       idExValid := false.B
-    }.otherwise {
+    }.elsewhen(pipeReady) {
       idExValid := ifIdValid
       when(ifIdValid) {
         idEx.pc := ifId.pc
@@ -300,17 +348,26 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
         idEx.ctrl := decode.ctrl
       }
     }
+    // else (memStageReady && exBusy && !injectBubble): hold idEx so FXDIV
+    // operands stay latched until the divider finishes.
   }
 
   when(memStageReady) {
-    exMemValid := idExValid
-    when(idExValid) {
-      exMem.pc4 := idEx.pc + 4.U
-      exMem.rd := idEx.rd
-      exMem.aluRes := alu.io.out
-      exMem.rs2Val := exRs2
-      exMem.funct3 := idEx.funct3
-      exMem.ctrl := idEx.ctrl
+    when(pipeReady) {
+      exMemValid := idExValid
+      when(idExValid) {
+        exMem.pc4 := idEx.pc + 4.U
+        exMem.rd := idEx.rd
+        exMem.aluRes := exAluResult
+        exMem.rs2Val := exRs2
+        exMem.funct3 := idEx.funct3
+        exMem.ctrl := idEx.ctrl
+      }
+    }.otherwise {
+      // EX is busy producing the FXDIV quotient; drain exMem to MEM/WB so any
+      // pending load completes, then leave the EX/MEM register empty until
+      // the divider produces its result.
+      exMemValid := false.B
     }
   }
 

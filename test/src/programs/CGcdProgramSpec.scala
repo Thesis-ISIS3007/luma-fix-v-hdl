@@ -15,7 +15,7 @@ class CGcdProgramSpec
       runBinaryProgram(
         "/programs/c_gcd_smoke.hex",
         outAddr = 0x84,
-        expected = 6,
+        expected = 6
       )
     }
   }

@@ -18,7 +18,7 @@ class CAbiSmokeProgramSpec
       runBinaryProgram(
         "/programs/c_abi_smoke.hex",
         outAddr = 0x80,
-        expected = 55,
+        expected = 55
       )
     }
   }

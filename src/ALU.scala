@@ -35,8 +35,10 @@ class Alu extends Module {
       AluOp.sltu -> (io.lhs < io.rhs).asUInt,
       AluOp.copyB -> io.rhs,
       AluOp.fxmul -> fxmulOut,
-      // Phase 2: fxdiv requires a multi-cycle iterative divider in EX. For now
-      // it returns 0 so the encoding is reserved without crashing simulation.
+      // FXDIV is computed by the multi-cycle FxDivUnit in the EX stage. The
+      // ALU output for fxdiv is unused (the core muxes in the divider's
+      // result instead); we still produce a stable 0 so simulation waveforms
+      // are clean while the pipeline is stalled.
       AluOp.fxdiv -> 0.U(32.W)
     )
   )

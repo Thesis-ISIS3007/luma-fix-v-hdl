@@ -93,7 +93,7 @@ sub-operation is selected by `funct3` (and `funct7` for FXADD vs FXSUB):
 | INT2FX   | (any)       | `011`  | R\*  | `rd = rs1 << 16`                       |
 | FX2INT   | (any)       | `100`  | R\*  | `rd = rs1 >>s 16`                      |
 | FXABS    | (any)       | `101`  | R\*  | `rd = |rs1|` (rs2 ignored)             |
-| FXDIV    | (any)       | `110`  | R    | reserved (illegal in v1; phase 2)      |
+| FXDIV    | (any)       | `110`  | R    | `rd = (rs1 << 16) / rs2` (signed)      |
 
 R\* = unary form, `rs2` field ignored by hardware.
 
@@ -104,8 +104,10 @@ sequence of one or more existing pipeline micro-ops. Most ops are bit-identical
 to a single RV32I ALU op and execute in one cycle; FXMUL adds a new ALU
 operation; FXABS is decomposed into three micro-ops using an internal,
 ABI-invisible scratch register file (4 entries, `s0..s3`) addressed via a 6th
-bit on the internal register ports. Multi-µop sequences hold the IF/ID latch
-stable until the last µop commits, so PC only advances per architectural
+bit on the internal register ports. FXDIV is a single architectural micro-op
+that drives a multi-cycle iterative divider in the EX stage, stalling the
+pipeline until the quotient is ready. Multi-µop sequences hold the IF/ID
+latch stable until the last µop commits, so PC only advances per architectural
 instruction. Scratch writes are suppressed from the debug writeback stream.
 
 ### Micro-op decomposition
@@ -119,6 +121,7 @@ instruction. Scratch writes are suppressed from the debug writeback stream.
 | INT2FX   | 1    | `slli rd, rs1, 16`                                                    |
 | FX2INT   | 1    | `srai rd, rs1, 16`                                                    |
 | FXABS    | 3    | `srai s0, rs1, 31; xor s1, rs1, s0; sub rd, s1, s0`                   |
+| FXDIV    | 1    | `fxdiv rd, rs1, rs2` (multi-cycle EX divider, ~50 cycles, pipe stall) |
 
 ### Implemented
 
@@ -131,25 +134,25 @@ instruction. Scratch writes are suppressed from the debug writeback stream.
 | INT2FX      | implemented | 1-µop, `slli rd, rs1, 16`.                           |
 | FX2INT      | implemented | 1-µop, `srai rd, rs1, 16` (truncates fraction).      |
 | FXABS       | implemented | 3-µop branchless absolute value via scratch s0/s1.   |
-
-### Not Implemented
-
-| Instruction | Status          | Notes                                            |
-| ---         | ---             | ---                                              |
-| FXDIV       | not implemented | Phase 2: requires multi-cycle iterative divider. |
+| FXDIV       | implemented | 1-µop, multi-cycle iterative divider in EX (~50 cycles, pipeline stall). |
 
 ### Semantics notes
 
-- All overflow is wrap-around (no saturation in v1).
+- All overflow is wrap-around (no saturation in v2).
 - FXMUL truncates the fractional bits (no rounding, no overflow detection).
 - FXABS of `INT_MIN` (`0x80000000`) returns `INT_MIN` due to two's-complement
   wrap-around, matching the algebraic identity of the branchless expansion.
-- FXDIV is reserved; executing it raises the illegal-instruction signal.
+- FXDIV computes `(rs1 << 16) / rs2` using a 48-iteration restoring divider on
+  the absolute values, then re-applies the XOR of operand signs. A divisor of
+  zero returns 0 (no trap, no exception). The 48-bit raw quotient is truncated
+  to 32 bits, so dividing by very small values wraps modulo 2^32.
+- FXDIV stalls the entire pipeline for ~50 cycles per issue. Loads in MEM
+  drain to WB normally during the stall; subsequent fetches are held until
+  the divider produces its result.
 
 ### Summary
 
-Implemented: 7 FX 16Q16 instructions cracked at decode by the FX sequencer.
-Reserved: 1 (FXDIV).
+Implemented: 8 FX 16Q16 instructions cracked at decode by the FX sequencer.
 
 ## RT
 

@@ -7,6 +7,7 @@ BUILD_SCRIPT := ../scripts/build_c_hex.py
 LINKER := linker.ld
 CRT0 := crt0.S
 HEADER := validation.h
+FX_HEADER := fx16q16.h
 
 OUT_DIR := out
 
@@ -18,7 +19,8 @@ CFLAGS := -march=rv32i -mabi=ilp32 \
 PROGRAMS := abi_smoke gcd_smoke array_sum memcpy_smoke memset_smoke \
 counted_loop_smoke signed_min_max_smoke shift_add_mul_smoke \
 div_rem_sub_smoke call_return_smoke \
-branch_torture_smoke unsupported_opcodes_smoke
+branch_torture_smoke unsupported_opcodes_smoke \
+fx_arith_smoke fx_div_smoke fx_dot_product_smoke
 
 BINS := $(patsubst %,$(OUT_DIR)/c_%.hex,$(PROGRAMS))
 ASMS := $(patsubst %,$(OUT_DIR)/c_%.S,$(PROGRAMS))
@@ -31,7 +33,7 @@ all: $(BINS) $(ASMS)
 $(OUT_DIR):
 	mkdir -p $(OUT_DIR)
 
-$(OUT_DIR)/c_%.elf: %.c $(CRT0) $(LINKER) $(HEADER) | $(OUT_DIR)
+$(OUT_DIR)/c_%.elf: %.c $(CRT0) $(LINKER) $(HEADER) $(FX_HEADER) | $(OUT_DIR)
 	$(CC) $(CFLAGS) $(CRT0) $< \
 	-Wl,-T,$(LINKER) \
 	-Wl,-Map,$(@:.elf=.map) \
