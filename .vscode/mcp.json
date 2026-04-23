@@ -1,8 +1,0 @@
-{
-  "servers": {
-    "prototype-metals": {
-      "url": "http://localhost:36211/mcp",
-      "type": "http"
-    }
-  }
-}

@@ -7,7 +7,6 @@ import firrtl.annotations.MemoryLoadFileType
 
 class CoreMemoryHarness(
     programFile: String,
-    programFileType: MemoryLoadFileType.FileType = MemoryLoadFileType.Hex,
     imemWords: Int = 1024,
     dmemWords: Int = 1024,
     resetVector: BigInt = 0
@@ -33,7 +32,7 @@ class CoreMemoryHarness(
   val imem = Mem(imemWords, UInt(32.W))
   val dmem = SyncReadMem(dmemWords, Vec(4, UInt(8.W)))
 
-  loadMemoryFromFile(imem, programFile, programFileType)
+  loadMemoryFromFile(imem, programFile)
 
   val iWordAddr = core.io.imem.req.bits(iAddrWidth + 1, 2)
   core.io.imem.req.ready := true.B

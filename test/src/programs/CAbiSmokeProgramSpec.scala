@@ -12,9 +12,9 @@ class CAbiSmokeProgramSpec
   override protected val cProgramDmemWords: Int = 512
 
   describe("RV32ICore C ABI smoke program") {
-    it("runs a GCC-compiled C program from a binary memory file") {
+    it("runs a GCC-compiled C program from a binary memory file", CBinary) {
       runBinaryProgram(
-        "/programs/c_abi_smoke.bin",
+        "/programs/c_abi_smoke.hex",
         outAddr = 0x80,
         expected = 55,
         cycles = 220

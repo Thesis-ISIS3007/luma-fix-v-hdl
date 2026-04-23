@@ -56,3 +56,6 @@ project/**/metals.sbt
 .history
 
 generated/
+
+out/
+build/

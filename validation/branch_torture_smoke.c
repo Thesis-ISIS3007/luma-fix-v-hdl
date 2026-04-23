@@ -1,15 +1,14 @@
-typedef int s32;
-typedef unsigned int u32;
+#include "validation.h"
 
-static volatile u32 *const TEST_OUT = (volatile u32 *)0x80u;
+static volatile unsigned int *const TEST_OUT = (volatile unsigned int *)0x80u;
 
 int main(void) {
-  s32 s_neg1 = -1;
-  s32 s_pos1 = 1;
-  u32 u_neg1 = 0xffffffffu;
-  u32 u_pos1 = 1u;
+  int s_neg1 = -1;
+  int s_pos1 = 1;
+  unsigned int u_neg1 = 0xffffffffu;
+  unsigned int u_pos1 = 1u;
 
-  u32 score = 0u;
+  unsigned int score = 0u;
 
   if (s_neg1 == s_neg1) {
     score++;

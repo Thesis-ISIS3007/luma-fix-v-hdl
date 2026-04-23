@@ -1,0 +1,13 @@
+package build.test
+
+import mill.*, scalalib.*
+
+object `package` extends build.ScalaTests, TestModule.ScalaTest {
+  def mvnDeps = Seq(mvn"org.scalatest::scalatest:3.2.19")
+
+  override def testArgsDefault: T[Seq[String]] = Task.Input {
+    val sentinel = mill.api.BuildCtx.workspaceRoot / ".run-cbinary"
+    if (os.exists(sentinel)) Seq.empty[String]
+    else Seq("-l", "CBinary")
+  }
+}

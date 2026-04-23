@@ -3,8 +3,11 @@ package luma_fix_v
 import chisel3._
 import chisel3.simulator.scalatest.ChiselSim
 import firrtl.annotations.MemoryLoadFileType
+import org.scalatest.Tag
 
 import scala.collection.mutable
+
+object CBinary extends Tag("CBinary")
 
 object test_utils {
   def iType(imm: Int, rs1: Int, funct3: Int, rd: Int, opcode: Int): Int = {
@@ -120,7 +123,6 @@ trait CBinaryProgramSupport { this: ChiselSim =>
     simulate(
       new CoreMemoryHarness(
         programFile = programBinPath,
-        programFileType = MemoryLoadFileType.Binary,
         imemWords = cProgramImemWords,
         dmemWords = cProgramDmemWords
       )
