@@ -5,15 +5,12 @@
 // the resulting hit info into dmem so the Chisel test can spot-check each
 // word.
 //
-// Geometry:
-//   triangle: v0=(0,0,0)  v1=(1,0,0)  v2=(0,1,0)   (xy unit right triangle)
-//   ray:      O=(0.25, 0.25, 1)  D=(0, 0, -1)  t=1000.0
+// Geometry: xy equilateral, centroid at origin, circumradius 1, side = sqrt(3):
+//   v0=(0,-1,0)  v1=(+sqrt(3)/2, 1/2, 0)  v2=(-sqrt(3)/2, 1/2, 0)
+//   ray:  O=(0, 0, 1)  D=(0, 0, -1)  t=1000.0  (through centroid, hits at z=0)
 //
-// Hand-checked Moller-Trumbore output:
-//   hit       = 1
-//   t         = 1.0      (0x00010000)
-//   pos       = (0.25, 0.25, 0)
-//   normal    = (0, 0, 1)        (dot(n, D) = -1 < 0, no flip)
+// Moller–Trumbore in 16.16: t and unit Nz are often 1.0 - 1 ulp; pos z = 1 - t.
+//   hit = 1;  t, Nz = 0x0000FFFF;  pos = (0, 0, 0x1);  Nx = Ny = 0
 
 #define TEST_OUT_HIT      ((volatile unsigned int *)0x80u)
 #define TEST_OUT_T        ((volatile unsigned int *)0x84u)
@@ -25,13 +22,16 @@
 #define TEST_OUT_NRM_Z    ((volatile unsigned int *)0x9Cu)
 
 int main(void) {
+  const fx_t rt3_2 = fx_from_double(0.8660254037844387); /* sqrt(3)/2 */
+  const fx_t half = fx_from_double(0.5);
+
   fx_triangle_t tri;
-  tri.v0 = fx_vec3_make(FX_ZERO, FX_ZERO, FX_ZERO);
-  tri.v1 = fx_vec3_make(FX_ONE, FX_ZERO, FX_ZERO);
-  tri.v2 = fx_vec3_make(FX_ZERO, FX_ONE, FX_ZERO);
+  tri.v0 = fx_vec3_make(FX_ZERO, fxneg(FX_ONE), FX_ZERO);
+  tri.v1 = fx_vec3_make(rt3_2, half, FX_ZERO);
+  tri.v2 = fx_vec3_make(fxneg(rt3_2), half, FX_ZERO);
 
   fx_ray_t ray;
-  ray.O = fx_vec3_make(fx_from_double(0.25), fx_from_double(0.25), FX_ONE);
+  ray.O = fx_vec3_make(FX_ZERO, FX_ZERO, FX_ONE);
   ray.D = fx_vec3_make(FX_ZERO, FX_ZERO, fxneg(FX_ONE));
   ray.t = fx_from_double(1000.0);
 

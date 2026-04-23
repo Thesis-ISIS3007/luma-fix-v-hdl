@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# End-to-end triangle render on the core:
+#   1) fx_rt_triangle_smoke  — dmem (no MMIO), fast; no CBinary sentinel needed.
+#   2) fx_rt_triangle_render_smoke — MMIO log -> triangle_hw.log.bin + PPM (needs
+#      .run-cbinary for CBinary-tagged spec).
+# Usage: ./scripts/triangle_e2e.sh
+# Output:  scripts/out/triangle_e2e.ppm  (from hardware log)
+#          dmem test only validates ray–triangle math; no PPM from that path.
+set -euo pipefail
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${repo_root}"
+
+echo "==> 1/2: fx_rt_triangle_smoke (dmem / intersection)"
+make -C "${repo_root}/validation" out/c_fx_rt_triangle_smoke.hex
+mkdir -p "${repo_root}/test/resources/programs"
+cp -f "${repo_root}/validation/out/c_fx_rt_triangle_smoke.hex" \
+  "${repo_root}/test/resources/programs/"
+./mill test.testOnly luma_fix_v.CFxRtProgramSpec
+echo "OK: intersection smoke passed."
+
+echo "==> 2/2: fx_rt_triangle_render_smoke (MMIO log -> PPM)"
+make -C "${repo_root}/validation" out/c_fx_rt_triangle_render_smoke.hex
+cp -f "${repo_root}/validation/out/c_fx_rt_triangle_render_smoke.hex" \
+  "${repo_root}/test/resources/programs/"
+mkdir -p "${repo_root}/scripts/out"
+export LUMAFIXV_OUT_DIR="${LUMAFIXV_OUT_DIR:-${repo_root}/scripts/out}"
+touch "${repo_root}/.run-cbinary"
+./mill test.testOnly luma_fix_v.CFxRtTriangleRenderProgramSpec
+python3 "${repo_root}/scripts/fx_rt_log_to_ppm.py" \
+  "${LUMAFIXV_OUT_DIR}/triangle_hw.log.bin" \
+  "${repo_root}/scripts/out/triangle_e2e.ppm"
+echo "Wrote ${repo_root}/scripts/out/triangle_e2e.ppm (from ${LUMAFIXV_OUT_DIR}/triangle_hw.log.bin)"

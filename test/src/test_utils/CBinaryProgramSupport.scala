@@ -51,7 +51,7 @@ trait CBinaryProgramSupport { this: ChiselSim =>
   protected def runBinaryProgramWithLog(
       resourcePath: String,
       logPath: Path,
-      cycles: Int
+      cycles: Long
   ): Long = {
     val resource = Option(getClass.getResource(resourcePath)).getOrElse {
       throw new RuntimeException(s"missing test resource $resourcePath")
@@ -72,7 +72,8 @@ trait CBinaryProgramSupport { this: ChiselSim =>
           dmemWords = cProgramDmemWords
         )
       ) { c =>
-        for (_ <- 0 until cycles) {
+        var step = 0L
+        while (step < cycles) {
           c.clock.step()
           if (c.io.renderLogValid.peek().litToBoolean) {
             val word = c.io.renderLogData.peek().litValue.toLong & 0xffffffffL
@@ -82,6 +83,7 @@ trait CBinaryProgramSupport { this: ChiselSim =>
             out.write(((word >>> 24) & 0xff).toInt)
             count += 1L
           }
+          step += 1L
         }
       }
     } finally {

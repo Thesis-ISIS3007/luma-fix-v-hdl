@@ -11,8 +11,9 @@
 //
 // Resolution is a compile-time knob: 32x24 keeps the smoke under a few
 // minutes of ChiselSim wall time, which is what the regression actually
-// runs. Bumping to 640x480 ("the image with 480p resolution" goal) is a
-// one-line change but takes hours of sim - intended as a manual run.
+// runs. For 360p use 640x360 (Makefile: c_fx_rt_cornell_360p); for 720p
+// use 1280x720 (c_fx_rt_cornell_720p). Both are manual / very long sims.
+// 480p (640x480) is the same idea with a different height.
 
 #define FX_RENDER_LOG ((volatile unsigned int *)0x40000000u)
 #define RT_RTRL_SENTINEL 0x5254524Cu
