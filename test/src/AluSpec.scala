@@ -71,5 +71,47 @@ class AluSpec extends AnyFunSpec with ChiselSim {
         c.io.out.expect("h12345678".U)
       }
     }
+
+    it("computes 16Q16 multiply with sign and wrap-around") {
+      simulate(new Alu()) { c =>
+        // 1.0 * 1.0 = 1.0  (1.0 in 16Q16 is 0x00010000)
+        c.io.op.poke(AluOp.fxmul)
+        c.io.lhs.poke("h00010000".U)
+        c.io.rhs.poke("h00010000".U)
+        c.clock.step()
+        c.io.out.expect("h00010000".U)
+
+        // 0.5 * 2.0 = 1.0
+        c.io.lhs.poke("h00008000".U)
+        c.io.rhs.poke("h00020000".U)
+        c.clock.step()
+        c.io.out.expect("h00010000".U)
+
+        // (-1.5) * 2.0 = -3.0
+        c.io.lhs.poke("hFFFE8000".U) // -1.5
+        c.io.rhs.poke("h00020000".U) // 2.0
+        c.clock.step()
+        c.io.out.expect("hFFFD0000".U) // -3.0
+
+        // (-1.0) * (-1.0) = 1.0
+        c.io.lhs.poke("hFFFF0000".U)
+        c.io.rhs.poke("hFFFF0000".U)
+        c.clock.step()
+        c.io.out.expect("h00010000".U)
+
+        // Wrap-around: large positive * large positive overflows the 16Q16
+        // range. Result is the low 32 bits of (lhs * rhs) >> 16.
+        c.io.lhs.poke("h7FFF0000".U) // ~32767.0
+        c.io.rhs.poke("h00020000".U) // 2.0
+        c.clock.step()
+        // 0x7FFF0000 * 0x00020000 = 0x0FFFE_00000000; >>16 = 0xFFFE_00000000
+        // low 32 bits = 0x00000000... actually compute precisely below.
+        // 32767.0 * 2.0 = 65534.0 in real, but max representable is ~32767.999.
+        // Wraps: signed (0x7FFF0000 << 1) = 0xFFFE0000 = -1.0... but we right
+        // shift the 64-bit product, not the operand. (32767 * 2 = 65534) in
+        // integer-bits which doesn't fit in [-32768, 32767], wraps to -2.
+        c.io.out.expect("hFFFE0000".U) // -2.0
+      }
+    }
   }
 }

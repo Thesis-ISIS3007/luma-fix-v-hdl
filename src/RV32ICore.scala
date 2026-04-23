@@ -27,9 +27,10 @@ class IfIdPipe extends Bundle {
 
 class IdExPipe extends Bundle {
   val pc = UInt(32.W)
-  val rs1 = UInt(5.W)
-  val rs2 = UInt(5.W)
-  val rd = UInt(5.W)
+  // 6-bit register addresses (bit 5 selects scratch). See RegFile.scala.
+  val rs1 = UInt(6.W)
+  val rs2 = UInt(6.W)
+  val rd = UInt(6.W)
   val rs1Val = UInt(32.W)
   val rs2Val = UInt(32.W)
   val imm = UInt(32.W)
@@ -39,7 +40,7 @@ class IdExPipe extends Bundle {
 
 class ExMemPipe extends Bundle {
   val pc4 = UInt(32.W)
-  val rd = UInt(5.W)
+  val rd = UInt(6.W)
   val aluRes = UInt(32.W)
   val rs2Val = UInt(32.W)
   val funct3 = UInt(3.W)
@@ -47,7 +48,7 @@ class ExMemPipe extends Bundle {
 }
 
 class MemWbPipe extends Bundle {
-  val rd = UInt(5.W)
+  val rd = UInt(6.W)
   val wbData = UInt(32.W)
   val rdWrite = Bool()
 }
@@ -99,6 +100,8 @@ object HazardUnit {
       rs2Used: Bool,
       rs2: UInt
   ): Bool =
+    // Loads only ever target architectural rd, so a 6-bit compare is safe:
+    // a scratch consumer (bit 5 = 1) cannot match a load producer (bit 5 = 0).
     idExValid && idExMemRead && (idExRd =/= 0.U) &&
       ((rs1Used && (rs1 === idExRd)) || (rs2Used && (rs2 === idExRd)))
 }
@@ -155,6 +158,7 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
 
   val regFile = Module(new RegFile)
   val alu = Module(new Alu)
+  val seq = Module(new FxSequencer)
 
   val pc = RegInit(resetVector.U(32.W))
 
@@ -171,7 +175,12 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   val memWbValid = RegInit(false.B)
 
   val fetchedInst = io.imem.resp.bits
-  val decode = RV32IDecoder.decode(ifId.inst)
+  // Decode goes through the FX sequencer: non-FX instructions pass straight
+  // through; FX instructions are cracked into one micro-op per cycle while
+  // `seq.io.holdFetch` keeps the IF/ID latch stable.
+  seq.io.inValid := ifIdValid
+  seq.io.inInst := ifId.inst
+  val decode = seq.io.out
 
   regFile.io.rs1Addr := decode.rs1
   regFile.io.rs2Addr := decode.rs2
@@ -242,28 +251,38 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   val memRespReady = !memRespNeeded || io.dmem.resp.valid
   val memStageReady = !exMemValid || (memReqAccepted && memRespReady)
 
-  val fetchBlocked = loadUseHazard || !memStageReady
+  // While the FX sequencer is mid-sequence it holds fetch so the same FX
+  // instruction stays latched in IF/ID and the next micro-op can be cracked.
+  val fetchBlocked = loadUseHazard || !memStageReady || seq.io.holdFetch
   val fetchFire = io.imem.resp.valid && !fetchBlocked
 
-  val nextPC = Mux(exJumpTaken && idExValid, jumpTarget, pc + 4.U)
-  when(exJumpTaken && idExValid) {
+  val flush = exJumpTaken && idExValid
+
+  val nextPC = Mux(flush, jumpTarget, pc + 4.U)
+  when(flush) {
     pc := jumpTarget
   }.elsewhen(fetchFire) {
     pc := pc + 4.U
   }
 
-  when(!fetchBlocked) {
-    when(fetchFire) {
-      ifId.pc := pc
-      ifId.inst := fetchedInst
-      ifIdValid := true.B
-    }
-    when(exJumpTaken && idExValid) {
-      ifIdValid := false.B
-    }
+  when(!fetchBlocked && fetchFire) {
+    ifId.pc := pc
+    ifId.inst := fetchedInst
+    ifIdValid := true.B
+  }
+  // Flush must clear IF/ID even when the sequencer is currently holding fetch,
+  // otherwise a stale FX instruction would resume after the branch resolves.
+  when(flush) {
+    ifIdValid := false.B
   }
 
-  val injectBubble = loadUseHazard || (exJumpTaken && idExValid)
+  val injectBubble = loadUseHazard || flush
+  // The FX sequencer advances its step counter on every cycle that a micro-op
+  // actually commits to ID/EX (matches the !injectBubble && memStageReady &&
+  // ifIdValid branch below). A flush resets the step instead.
+  seq.io.advance := memStageReady && !injectBubble && ifIdValid
+  seq.io.flush := flush
+
   when(memStageReady) {
     when(injectBubble) {
       idExValid := false.B
@@ -276,7 +295,7 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
         idEx.rd := decode.rd
         idEx.rs1Val := regFile.io.rs1Data
         idEx.rs2Val := regFile.io.rs2Data
-        idEx.imm := ImmGen.select(ifId.inst, decode.ctrl.immSel)
+        idEx.imm := decode.imm
         idEx.funct3 := decode.funct3
         idEx.ctrl := decode.ctrl
       }
@@ -323,8 +342,11 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   io.dmem.req.bits.wMask := storeMask
 
   io.debugPC := pc
-  io.debugWbValid := memWbValid && memWb.rdWrite
-  io.debugWbRd := memWb.rd
+  // Debug stream only exposes architectural register writebacks. Scratch
+  // writes (bit 5 of memWb.rd set) are intentionally hidden so tests that
+  // observe arch-reg writes don't see internal sequencer bookkeeping.
+  io.debugWbValid := memWbValid && memWb.rdWrite && !memWb.rd(5)
+  io.debugWbRd := memWb.rd(4, 0)
   io.debugWbData := memWb.wbData
 
   dontTouch(nextPC)

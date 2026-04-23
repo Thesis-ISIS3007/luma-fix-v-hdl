@@ -56,4 +56,35 @@ trait Instructions {
   }
 
   def nop: Int = iType(0, 0, 0x0, 0, 0x13)
+
+  // FX 16Q16 extension uses the RISC-V custom-0 opcode (0b0001011) with
+  // R-type encoding. funct3 selects the sub-op; funct7 distinguishes
+  // FXADD/FXSUB. Unary forms (FXNEG, INT2FX, FX2INT, FXABS) ignore rs2.
+  val FX_OPCODE: Int = 0x0b
+  val FX_F3_ADDSUB: Int = 0x0
+  val FX_F3_MUL: Int = 0x1
+  val FX_F3_NEG: Int = 0x2
+  val FX_F3_INT2FX: Int = 0x3
+  val FX_F3_FX2INT: Int = 0x4
+  val FX_F3_ABS: Int = 0x5
+  val FX_F3_DIV: Int = 0x6
+  val FX_F7_ADD: Int = 0x00
+  val FX_F7_SUB: Int = 0x20
+
+  def fxAdd(rd: Int, rs1: Int, rs2: Int): Int =
+    rType(FX_F7_ADD, rs2, rs1, FX_F3_ADDSUB, rd, FX_OPCODE)
+  def fxSub(rd: Int, rs1: Int, rs2: Int): Int =
+    rType(FX_F7_SUB, rs2, rs1, FX_F3_ADDSUB, rd, FX_OPCODE)
+  def fxMul(rd: Int, rs1: Int, rs2: Int): Int =
+    rType(0, rs2, rs1, FX_F3_MUL, rd, FX_OPCODE)
+  def fxNeg(rd: Int, rs1: Int): Int =
+    rType(0, 0, rs1, FX_F3_NEG, rd, FX_OPCODE)
+  def int2Fx(rd: Int, rs1: Int): Int =
+    rType(0, 0, rs1, FX_F3_INT2FX, rd, FX_OPCODE)
+  def fx2Int(rd: Int, rs1: Int): Int =
+    rType(0, 0, rs1, FX_F3_FX2INT, rd, FX_OPCODE)
+  def fxAbs(rd: Int, rs1: Int): Int =
+    rType(0, 0, rs1, FX_F3_ABS, rd, FX_OPCODE)
+  def fxDiv(rd: Int, rs1: Int, rs2: Int): Int =
+    rType(0, rs2, rs1, FX_F3_DIV, rd, FX_OPCODE)
 }

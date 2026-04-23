@@ -13,6 +13,11 @@ class Alu extends Module {
 
   val shiftAmount = io.rhs(4, 0)
 
+  // 16Q16 fixed-point multiply: signed 32x32 -> 64-bit product, arithmetic
+  // shift right by 16, truncate to 32 bits. Wrap-around on overflow.
+  val fxmulProduct = io.lhs.asSInt * io.rhs.asSInt
+  val fxmulOut = (fxmulProduct >> 16).asUInt(31, 0)
+
   io.out := MuxLookup(
     io.op,
     (io.lhs + io.rhs)(31, 0)
@@ -28,7 +33,11 @@ class Alu extends Module {
       AluOp.sra -> (io.lhs.asSInt >> shiftAmount).asUInt,
       AluOp.slt -> (io.lhs.asSInt < io.rhs.asSInt).asUInt,
       AluOp.sltu -> (io.lhs < io.rhs).asUInt,
-      AluOp.copyB -> io.rhs
+      AluOp.copyB -> io.rhs,
+      AluOp.fxmul -> fxmulOut,
+      // Phase 2: fxdiv requires a multi-cycle iterative divider in EX. For now
+      // it returns 0 so the encoding is reserved without crashing simulation.
+      AluOp.fxdiv -> 0.U(32.W)
     )
   )
 }
