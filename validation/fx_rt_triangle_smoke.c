@@ -40,6 +40,7 @@ int main(void) {
   hit.t = 0;
   hit.pos = fx_vec3_zero();
   hit.normal = fx_vec3_zero();
+  hit.primIdx = 0u;
 
   int ok = fx_intersect_triangle(&ray, &tri, &hit);
 

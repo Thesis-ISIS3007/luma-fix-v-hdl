@@ -13,8 +13,11 @@
 // arenas are part of the struct deliberately so a caller can snapshot /
 // reuse a single allocation across multiple build+traverse rounds.
 
-#define FX_BVH_MAX_PRIMS 16
-#define FX_BVH_MAX_NODES 32
+// Cornell Box clocks in at 32 prims; cap at 64 for headroom. Worst-case
+// node count is `2 * MAX_PRIMS - 1`, hence 128. Stack depth follows
+// log2(MAX_PRIMS / MAX_LEAF_SZ), which is comfortably under 32.
+#define FX_BVH_MAX_PRIMS 64
+#define FX_BVH_MAX_NODES 128
 #define FX_BVH_N_BUCKETS 12
 #define FX_BVH_MAX_LEAF_SZ 2
 #define FX_BVH_MAX_STACK 32
@@ -346,6 +349,11 @@ static inline int fx_bvh_traverse(const fx_bvh_t *bvh, fx_ray_t *ray,
           if (!anyHit || tmp.t < hit->t) {
             anyHit = 1;
             *hit = tmp;
+            // bvh->prims[] was reshuffled by the partition step but the
+            // matching bvh->bData[] entry still carries the *original*
+            // primitive index, which is what the caller's per-prim
+            // attribute tables (matIdx, etc.) are keyed on.
+            hit->primIdx = bvh->bData[node->firstChildOrPrim + i].primIdx;
           }
         }
       }

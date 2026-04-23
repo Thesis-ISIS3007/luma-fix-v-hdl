@@ -25,6 +25,11 @@ class CoreMemoryHarness(
     val debugWbValid = Output(Bool())
     val debugWbRd = Output(UInt(5.W))
     val debugWbData = Output(UInt(32.W))
+    // MMIO render-log channel: when the core stores to RenderLogAddr the
+    // store is suppressed from dmem and instead surfaced one cycle later
+    // on these outputs for the test harness to capture.
+    val renderLogValid = Output(Bool())
+    val renderLogData = Output(UInt(32.W))
   })
 
   val core = Module(new RV32ICore(resetVector))
@@ -73,9 +78,21 @@ class CoreMemoryHarness(
     dReadVec(0)
   )
 
-  when(firstWriteFire) {
+  // MMIO render-log address. Pinned well above any plausible dmem mask so
+  // the existing dWordAddr slice keeps decoding the in-window dmem cleanly.
+  // Stores to this address never reach dmem; instead they get surfaced on
+  // renderLogValid/renderLogData so a host-side test can stream pixels out.
+  val RenderLogAddr = "h40000000".U(32.W)
+  val logHit = firstWriteFire && (core.io.dmem.req.bits.addr === RenderLogAddr)
+
+  when(firstWriteFire && !logHit) {
     dmem.write(dWordAddr, dWriteVec, core.io.dmem.req.bits.wMask.asBools)
   }
+
+  // Register one cycle so a peek on the falling edge captures the value
+  // that lined up with the store.
+  io.renderLogValid := RegNext(logHit, false.B)
+  io.renderLogData := RegNext(core.io.dmem.req.bits.wData, 0.U)
 
   val peekWordAddr = io.dmemPeekAddr(dAddrWidth + 1, 2)
   val peekVec = dmem.read(peekWordAddr, true.B)

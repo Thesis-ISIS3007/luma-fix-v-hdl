@@ -22,7 +22,7 @@ counted_loop_smoke signed_min_max_smoke shift_add_mul_smoke \
 div_rem_sub_smoke call_return_smoke \
 branch_torture_smoke unsupported_opcodes_smoke \
 fx_arith_smoke fx_div_smoke fx_dot_product_smoke \
-fx_rt_triangle_smoke fx_rt_bvh_smoke
+fx_rt_triangle_smoke fx_rt_bvh_smoke fx_rt_cornell_smoke
 
 BINS := $(patsubst %,$(OUT_DIR)/c_%.hex,$(PROGRAMS))
 ASMS := $(patsubst %,$(OUT_DIR)/c_%.S,$(PROGRAMS))

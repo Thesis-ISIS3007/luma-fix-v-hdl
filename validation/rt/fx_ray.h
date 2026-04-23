@@ -19,6 +19,9 @@ typedef struct {
   fx_t t;
   fx_vec3_t normal;
   fx_vec3_t pos;
+  // Index of the primitive that produced the closest hit. Set by
+  // fx_bvh_traverse when latching a better hit; undefined if `hit == 0`.
+  unsigned int primIdx;
 } fx_hit_info_t;
 
 #endif
