@@ -91,16 +91,22 @@ object ForwardingUnit {
 object HazardUnit {
   def apply(
       idExValid: Bool,
-      idExMemRead: Bool,
+      idExWritesRd: Bool,
+      idExResultReadyInEx: Bool,
       idExRd: UInt,
       rs1Used: Bool,
       rs1: UInt,
       rs2Used: Bool,
       rs2: UInt
   ): Bool =
+    // Stall on any unresolved RAW dependency from the current ID/EX producer.
+    // Loads are the current concrete case (result not ready until MEM), but
+    // this keeps the policy explicit for future multi-cycle producers that
+    // cannot be forwarded from EX in the same cycle.
+    //
     // Loads only ever target architectural rd, so a 6-bit compare is safe:
     // a scratch consumer (bit 5 = 1) cannot match a load producer (bit 5 = 0).
-    idExValid && idExMemRead && (idExRd =/= 0.U) &&
+    idExValid && idExWritesRd && !idExResultReadyInEx && (idExRd =/= 0.U) &&
       ((rs1Used && (rs1 === idExRd)) || (rs2Used && (rs2 === idExRd)))
 }
 
@@ -194,9 +200,12 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   regFile.io.rdData := memWb.wbData
   regFile.io.rdWrite := memWbValid && memWb.rdWrite
 
-  val loadUseHazard = HazardUnit(
+  val idExWritesRd = idEx.ctrl.rdWrite
+  val idExResultReadyInEx = !idEx.ctrl.memRead
+  val rawHazardStall = HazardUnit(
     idExValid,
-    idEx.ctrl.memRead,
+    idExWritesRd,
+    idExResultReadyInEx,
     idEx.rd,
     decode.ctrl.rs1Used,
     decode.rs1,
@@ -292,7 +301,7 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   // While the FX sequencer is mid-sequence it holds fetch so the same FX
   // instruction stays latched in IF/ID and the next micro-op can be cracked.
   // FXDIV adds another fetch-block reason via pipeReady.
-  val fetchBlocked = loadUseHazard || !pipeReady || seq.io.holdFetch
+  val fetchBlocked = rawHazardStall || !pipeReady || seq.io.holdFetch
   val fetchFire = io.imem.resp.valid && !fetchBlocked
 
   val flush = exJumpTaken && idExValid
@@ -315,7 +324,7 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
     ifIdValid := false.B
   }
 
-  val injectBubble = loadUseHazard || flush
+  val injectBubble = rawHazardStall || flush
   // The FX sequencer advances its step counter on every cycle that a micro-op
   // actually commits to ID/EX (matches the !injectBubble && pipeReady &&
   // ifIdValid branch below). A flush resets the step instead.
