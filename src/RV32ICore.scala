@@ -302,7 +302,9 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   // instruction stays latched in IF/ID and the next micro-op can be cracked.
   // FXDIV adds another fetch-block reason via pipeReady.
   val fetchBlocked = rawHazardStall || !pipeReady || seq.io.holdFetch
-  val fetchFire = io.imem.resp.valid && !fetchBlocked
+  // IF only advances when the request is accepted and an instruction is
+  // available in the same cycle.
+  val fetchFire = io.imem.req.fire && io.imem.resp.valid
 
   val flush = exJumpTaken && idExValid
 
@@ -313,7 +315,7 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
     pc := pc + 4.U
   }
 
-  when(!fetchBlocked && fetchFire) {
+  when(fetchFire) {
     ifId.pc := pc
     ifId.inst := fetchedInst
     ifIdValid := true.B
@@ -401,7 +403,7 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
     memWb.rdWrite := exMem.ctrl.rdWrite
   }
 
-  io.imem.req.valid := true.B
+  io.imem.req.valid := !fetchBlocked
   io.imem.req.bits := pc
 
   io.dmem.req.valid := exMemValid && (exMem.ctrl.memRead || exMem.ctrl.memWrite)
