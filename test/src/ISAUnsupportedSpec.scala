@@ -15,7 +15,6 @@ class ISAUnsupportedSpec extends AnyFunSpec with ChiselSim {
           0x00000073, // ecall
           0x00100073, // ebreak
           0x02000073, // reserved system encoding
-          0x00001073, // csr access without supported CSR path
           0x12300073 // arbitrary unsupported system opcode pattern
         )
 

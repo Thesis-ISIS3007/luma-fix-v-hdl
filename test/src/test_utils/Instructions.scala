@@ -57,6 +57,19 @@ trait Instructions {
 
   def nop: Int = iType(0, 0, 0x0, 0, 0x13)
 
+  val SYSTEM_OPCODE: Int = 0x73
+
+  def csrType(csr: Int, rs1OrZimm: Int, funct3: Int, rd: Int): Int =
+    ((csr & 0xfff) << 20) | ((rs1OrZimm & 0x1f) << 15) | ((funct3 & 0x7) << 12) |
+      ((rd & 0x1f) << 7) | SYSTEM_OPCODE
+
+  def csrrw(rd: Int, csr: Int, rs1: Int): Int = csrType(csr, rs1, 0x1, rd)
+  def csrrs(rd: Int, csr: Int, rs1: Int): Int = csrType(csr, rs1, 0x2, rd)
+  def csrrc(rd: Int, csr: Int, rs1: Int): Int = csrType(csr, rs1, 0x3, rd)
+  def csrrwi(rd: Int, csr: Int, zimm: Int): Int = csrType(csr, zimm, 0x5, rd)
+  def csrrsi(rd: Int, csr: Int, zimm: Int): Int = csrType(csr, zimm, 0x6, rd)
+  def csrrci(rd: Int, csr: Int, zimm: Int): Int = csrType(csr, zimm, 0x7, rd)
+
   // FX 16Q16 extension uses the RISC-V custom-0 opcode (0b0001011) with
   // R-type encoding. funct3 selects the sub-op; funct7 distinguishes
   // FXADD/FXSUB. Unary forms (FXNEG, INT2FX, FX2INT, FXABS) ignore rs2.

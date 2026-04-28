@@ -34,6 +34,7 @@ class IdExPipe extends Bundle {
   val rs1Val = UInt(32.W)
   val rs2Val = UInt(32.W)
   val imm = UInt(32.W)
+  val csrAddr = UInt(12.W)
   val ctrl = new DecodeSignals
 }
 
@@ -172,6 +173,13 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   val seq = Module(new FxSequencer)
   val divUnit = Module(new FxDivUnit)
 
+  // Minimal machine-mode CSR storage.
+  val csrMstatus = RegInit(0.U(32.W)) // 0x300
+  val csrMscratch = RegInit(0.U(32.W)) // 0x340
+  val csrMepc = RegInit(0.U(32.W)) // 0x341
+  val csrMcause = RegInit(0.U(32.W)) // 0x342
+  val csrMtvec = RegInit(0.U(32.W)) // 0x305
+
   val pc = RegInit(cfg.resetVector.U(cfg.xlen.W))
 
   val ifId = RegInit(0.U.asTypeOf(new IfIdPipe))
@@ -246,6 +254,36 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   val exOp1 = Mux(idEx.ctrl.aluSrc1PC, idEx.pc, exRs1)
   val exOp2 = Mux(idEx.ctrl.aluSrc2Imm, idEx.imm, exRs2)
 
+  val csrReadData = MuxLookup(idEx.csrAddr, 0.U(32.W))(
+    Seq(
+      "h300".U -> csrMstatus,
+      "h305".U -> csrMtvec,
+      "h340".U -> csrMscratch,
+      "h341".U -> csrMepc,
+      "h342".U -> csrMcause
+    )
+  )
+  val csrOperand = Mux(idEx.ctrl.csrImm, Cat(0.U(27.W), idEx.rs1(4, 0)), exRs1)
+  val csrWriteEnable = idEx.ctrl.csrCmd =/= CsrCmd.none
+  val csrShouldWrite = MuxLookup(csrWriteEnable, false.B)(
+    Seq(
+      true.B -> MuxLookup(idEx.ctrl.csrCmd, false.B)(
+        Seq(
+          CsrCmd.rw -> true.B,
+          CsrCmd.rs -> (csrOperand =/= 0.U),
+          CsrCmd.rc -> (csrOperand =/= 0.U)
+        )
+      )
+    )
+  )
+  val csrWriteData = MuxLookup(idEx.ctrl.csrCmd, csrReadData)(
+    Seq(
+      CsrCmd.rw -> csrOperand,
+      CsrCmd.rs -> (csrReadData | csrOperand),
+      CsrCmd.rc -> (csrReadData & ~csrOperand)
+    )
+  )
+
   alu.io.op := idEx.ctrl.aluOp
   alu.io.lhs := exOp1
   alu.io.rhs := exOp2
@@ -274,7 +312,13 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   val exBusy = isFxDivInEx && !divResultReady
 
   // Use the divider's quotient instead of the ALU result for FXDIV.
-  val exAluResult = Mux(isFxDivInEx, effectiveDivOut, alu.io.out)
+  val exAluResult = MuxCase(
+    alu.io.out,
+    Seq(
+      isFxDivInEx -> effectiveDivOut,
+      (idEx.ctrl.csrCmd =/= CsrCmd.none) -> csrReadData
+    )
+  )
 
   val (storeWData, storeMask) =
     StoreUnit(cfg.xlen, exMem.aluRes, exMem.rs2Val, exMem.ctrl.memOp)
@@ -374,11 +418,22 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
         idEx.rs1Val := regFile.io.rs1Data
         idEx.rs2Val := regFile.io.rs2Data
         idEx.imm := decode.imm
+        idEx.csrAddr := decode.csrAddr
         idEx.ctrl := decode.ctrl
       }
     }
     // else (memStageReady && exBusy && !injectBubble): hold idEx so FXDIV
     // operands stay latched until the divider finishes.
+  }
+
+  when(idExValid && pipeReady && csrShouldWrite) {
+    switch(idEx.csrAddr) {
+      is("h300".U) { csrMstatus := csrWriteData }
+      is("h305".U) { csrMtvec := csrWriteData }
+      is("h340".U) { csrMscratch := csrWriteData }
+      is("h341".U) { csrMepc := csrWriteData }
+      is("h342".U) { csrMcause := csrWriteData }
+    }
   }
 
   when(memStageReady) {

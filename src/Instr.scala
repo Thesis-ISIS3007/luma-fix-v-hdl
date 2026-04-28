@@ -55,6 +55,7 @@ object RV32IOpcode {
   val STORE: UInt = "b0100011".U(7.W)
   val OPIMM: UInt = "b0010011".U(7.W)
   val OP: UInt = "b0110011".U(7.W)
+  val SYSTEM: UInt = "b1110011".U(7.W)
 }
 
 object RV32IBranchFunct3 {
@@ -99,6 +100,10 @@ object MemOp extends ChiselEnum {
   val none, lb, lh, lw, lbu, lhu, sb, sh, sw = Value
 }
 
+object CsrCmd extends ChiselEnum {
+  val none, rw, rs, rc = Value
+}
+
 class DecodeSignals extends Bundle {
   val illegal = Bool()
   val rs1Used = Bool()
@@ -118,6 +123,8 @@ class DecodeSignals extends Bundle {
   val memUnsigned = Bool()
   val memSize = UInt(2.W)
   val wbSel = UInt(2.W)
+  val csrCmd = CsrCmd()
+  val csrImm = Bool()
 }
 
 class DecodedInstruction extends Bundle {
@@ -130,6 +137,7 @@ class DecodedInstruction extends Bundle {
   // Pre-resolved immediate. RV32I uses ImmGen.select(inst, immSel); FX micro-ops
   // can override with a literal value (e.g. 16 for INT2FX shift amount).
   val imm = UInt(32.W)
+  val csrAddr = UInt(12.W)
   val ctrl = new DecodeSignals
 }
 
@@ -183,6 +191,7 @@ object RV32IDecoder {
     decoded.rd := Cat(0.U(1.W), inst(11, 7))
     decoded.funct3 := funct3
     decoded.imm := 0.U
+    decoded.csrAddr := inst(31, 20)
 
     decoded.ctrl.illegal := true.B
     decoded.ctrl.rs1Used := false.B
@@ -202,6 +211,8 @@ object RV32IDecoder {
     decoded.ctrl.memUnsigned := false.B
     decoded.ctrl.memSize := 2.U
     decoded.ctrl.wbSel := RV32IDecode.WbSelAlu
+    decoded.ctrl.csrCmd := CsrCmd.none
+    decoded.ctrl.csrImm := false.B
 
     switch(opcode) {
       is(RV32IOpcode.LUI) {
@@ -343,6 +354,48 @@ object RV32IDecoder {
           is(RV32IAluFunct3.AND) { decoded.ctrl.aluOp := AluOp.and }
         }
       }
+      is(RV32IOpcode.SYSTEM) {
+        switch(funct3) {
+          // Zicsr: CSRRW/CSRRS/CSRRC
+          is("b001".U) {
+            decoded.ctrl.illegal := false.B
+            decoded.ctrl.rs1Used := true.B
+            decoded.ctrl.rdWrite := true.B
+            decoded.ctrl.csrCmd := CsrCmd.rw
+          }
+          is("b010".U) {
+            decoded.ctrl.illegal := false.B
+            decoded.ctrl.rs1Used := true.B
+            decoded.ctrl.rdWrite := true.B
+            decoded.ctrl.csrCmd := CsrCmd.rs
+          }
+          is("b011".U) {
+            decoded.ctrl.illegal := false.B
+            decoded.ctrl.rs1Used := true.B
+            decoded.ctrl.rdWrite := true.B
+            decoded.ctrl.csrCmd := CsrCmd.rc
+          }
+          // Zicsr immediate: CSRRWI/CSRRSI/CSRRCI (zimm in rs1 field)
+          is("b101".U) {
+            decoded.ctrl.illegal := false.B
+            decoded.ctrl.rdWrite := true.B
+            decoded.ctrl.csrCmd := CsrCmd.rw
+            decoded.ctrl.csrImm := true.B
+          }
+          is("b110".U) {
+            decoded.ctrl.illegal := false.B
+            decoded.ctrl.rdWrite := true.B
+            decoded.ctrl.csrCmd := CsrCmd.rs
+            decoded.ctrl.csrImm := true.B
+          }
+          is("b111".U) {
+            decoded.ctrl.illegal := false.B
+            decoded.ctrl.rdWrite := true.B
+            decoded.ctrl.csrCmd := CsrCmd.rc
+            decoded.ctrl.csrImm := true.B
+          }
+        }
+      }
     }
 
     decoded.imm := ImmGen.select(inst, decoded.ctrl.immSel)
@@ -373,6 +426,7 @@ object FxDecoder {
     decoded.rd := archRd
     decoded.funct3 := funct3
     decoded.imm := 0.U(32.W)
+    decoded.csrAddr := 0.U
 
     decoded.ctrl.illegal := true.B
     decoded.ctrl.rs1Used := true.B
@@ -392,6 +446,8 @@ object FxDecoder {
     decoded.ctrl.memUnsigned := false.B
     decoded.ctrl.memSize := 2.U
     decoded.ctrl.wbSel := RV32IDecode.WbSelAlu
+    decoded.ctrl.csrCmd := CsrCmd.none
+    decoded.ctrl.csrImm := false.B
 
     switch(funct3) {
       is(FxFunct3.FXADDSUB) {
