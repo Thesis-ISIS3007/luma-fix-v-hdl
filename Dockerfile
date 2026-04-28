@@ -1,19 +1,18 @@
 # syntax=docker/dockerfile:1
 
-FROM ubuntu:24.04
+FROM fedora:44
 
-ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8
 
-RUN apt update && \
-apt install -y --no-install-recommends \
-ca-certificates \
-curl \
-wget \
-make \
-gcc \
-build-essential \
-verilator && \
-rm -rf /var/lib/apt/lists/*
+RUN dnf install -y --setopt=install_weak_deps=False \
+    ca-certificates \
+    curl \
+    wget \
+    make \
+    gcc \
+    gcc-c++ \
+    verilator && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf
 
 WORKDIR /workspace

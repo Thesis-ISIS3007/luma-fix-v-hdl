@@ -1,6 +1,9 @@
 {
-  "name": "Ubuntu",
-  "image": "mcr.microsoft.com/devcontainers/base:noble",
+  "name": "Fedora",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
   "customizations": {
     "vscode": {
       "extensions": [
