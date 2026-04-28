@@ -2,7 +2,7 @@ package luma_fix_v
 
 import chisel3._
 
-class LumaFixV extends Module {
+class LumaFixV(cfg: CoreConfig = CoreConfig()) extends Module {
   val io = IO(new Bundle {
     val imem = new InstrBusIO
     val dmem = new DataBusIO
@@ -12,7 +12,7 @@ class LumaFixV extends Module {
     val debugWbData = Output(UInt(32.W))
   })
 
-  val core = Module(new RV32ICore())
+  val core = Module(new RV32ICore(cfg))
 
   core.io.imem <> io.imem
   core.io.dmem <> io.dmem

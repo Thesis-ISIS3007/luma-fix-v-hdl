@@ -32,7 +32,11 @@ class CoreMemoryHarness(
     val renderLogData = Output(UInt(32.W))
   })
 
-  val core = Module(new RV32ICore(resetVector))
+  val core = Module(
+    new RV32ICore(
+      CoreConfig(resetVector = resetVector)
+    )
+  )
   val imem = Mem(imemWords, UInt(32.W))
   val dmem = SyncReadMem(dmemWords, Vec(4, UInt(8.W)))
 

@@ -146,7 +146,7 @@ object LoadUnit {
   }
 }
 
-class RV32ICore(resetVector: BigInt = 0) extends Module {
+class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   val io = IO(new Bundle {
     val imem = new InstrBusIO
     val dmem = new DataBusIO
@@ -161,7 +161,7 @@ class RV32ICore(resetVector: BigInt = 0) extends Module {
   val seq = Module(new FxSequencer)
   val divUnit = Module(new FxDivUnit)
 
-  val pc = RegInit(resetVector.U(32.W))
+  val pc = RegInit(cfg.resetVector.U(cfg.xlen.W))
 
   val ifId = RegInit(0.U.asTypeOf(new IfIdPipe))
   val ifIdValid = RegInit(false.B)

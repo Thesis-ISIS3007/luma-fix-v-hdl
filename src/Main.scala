@@ -4,7 +4,7 @@ import circt.stage.ChiselStage
 
 object Main extends App {
   ChiselStage.emitSystemVerilogFile(
-    new LumaFixV,
+    new LumaFixV(CoreConfig()),
     args = Array(
       "--target-dir",
       "generated"
