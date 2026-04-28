@@ -4,7 +4,7 @@
 // Orthographic sweep of the same xy equilateral fixture as
 // fx_rt_triangle_smoke.c, streaming ARGB pixels through the MMIO render log
 // (0x40000000) in the same framing as fx_rt_cornell_smoke. Decode a captured
-// log to PPM with scripts/fx_rt_log_to_ppm.py. The (sx, sy) frustum is a
+// log to PNG with scripts/fx_rt_log_to_png.py. The (sx, sy) frustum is a
 // square centered on the triangle centroid (0,0) with half-extent 1.1; hits
 // are solid red. No BVH.
 

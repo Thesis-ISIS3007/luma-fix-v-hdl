@@ -4,7 +4,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 /** Stable locations for MMIO render logs so e2e scripts can `export
-  * LUMAFIXV_OUT_DIR=.../scripts/out` and find files next to the PPM. Mill
+  * LUMAFIXV_OUT_DIR=.../scripts/out` and find files next to decoded images. Mill
   * may run tests from a worker sandbox, but a repo-relative `scripts/out`
   * is still used unless overridden.
   */
