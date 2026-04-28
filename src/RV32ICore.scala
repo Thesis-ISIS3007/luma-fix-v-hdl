@@ -286,8 +286,22 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
     exMem.ctrl.memOp
   )
 
-  val memAccess = exMem.ctrl.memRead || exMem.ctrl.memWrite
-  val memRespNeeded = exMem.ctrl.memRead
+  val misalignedMemAccess = MuxLookup(exMem.ctrl.memOp, false.B)(
+    Seq(
+      MemOp.lb -> false.B,
+      MemOp.lbu -> false.B,
+      MemOp.sb -> false.B,
+      MemOp.lh -> exMem.aluRes(0),
+      MemOp.lhu -> exMem.aluRes(0),
+      MemOp.sh -> exMem.aluRes(0),
+      MemOp.lw -> (exMem.aluRes(1, 0) =/= 0.U),
+      MemOp.sw -> (exMem.aluRes(1, 0) =/= 0.U)
+    )
+  )
+  // No trap path yet: detect and squash misaligned accesses so they don't hit
+  // memory and don't commit a bogus load result.
+  val memAccess = (exMem.ctrl.memRead || exMem.ctrl.memWrite) && !misalignedMemAccess
+  val memRespNeeded = exMem.ctrl.memRead && !misalignedMemAccess
   val memReqAccepted = !memAccess || io.dmem.req.ready
   val memRespReady = !memRespNeeded || io.dmem.resp.valid
   val memStageReady = !exMemValid || (memReqAccepted && memRespReady)
@@ -400,13 +414,13 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
     memWbValid := exMemValid
     memWb.rd := exMem.rd
     memWb.wbData := wbData
-    memWb.rdWrite := exMem.ctrl.rdWrite
+    memWb.rdWrite := exMem.ctrl.rdWrite && !misalignedMemAccess
   }
 
   io.imem.req.valid := !fetchBlocked
   io.imem.req.bits := pc
 
-  io.dmem.req.valid := exMemValid && (exMem.ctrl.memRead || exMem.ctrl.memWrite)
+  io.dmem.req.valid := exMemValid && memAccess
   io.dmem.req.bits.addr := exMem.aluRes
   io.dmem.req.bits.write := exMem.ctrl.memWrite
   io.dmem.req.bits.wData := storeWData
