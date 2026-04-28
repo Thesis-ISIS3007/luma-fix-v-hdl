@@ -28,7 +28,7 @@ class CFxRtTriangleRenderProgramSpec
       "fx_rt_triangle_render_smoke: streams a 32x24 image through the render log",
       CBinary
     ) {
-      val hex = "/samples/c_fx_rt_triangle_render_smoke.hex"
+      val hex = "/samples/c_triangle_render_32x24.hex"
       // No BVH; much cheaper per pixel than Cornell — a few M cycles total.
       val cycles = 5_000_000L
       val logPath = CornellRenderLogPaths.triangleHwLog
