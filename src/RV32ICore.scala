@@ -415,5 +415,4 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   io.debugWbRd := memWb.rd(4, 0)
   io.debugWbData := memWb.wbData
 
-  dontTouch(nextPC)
 }
