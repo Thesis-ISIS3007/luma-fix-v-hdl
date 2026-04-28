@@ -40,4 +40,12 @@ object CornellRenderLogPaths {
       case Some(s) if s.nonEmpty => Paths.get(s)
       case _                     => outDir.resolve("triangle_hw.log.bin")
     }
+
+  def sampleLogFor(sampleHex: String): Path =
+    Option(System.getenv("LUMAFIXV_SAMPLE_LOG")) match {
+      case Some(s) if s.nonEmpty => Paths.get(s)
+      case _ =>
+        val baseName = sampleHex.stripPrefix("/samples/").stripSuffix(".hex")
+        outDir.resolve(s"${baseName}.log.bin")
+    }
 }

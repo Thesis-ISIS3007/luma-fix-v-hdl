@@ -11,12 +11,25 @@ class CProgramsAnalogSpec
     with ChiselSim
     with CBinaryProgramSupport {
 
+  // Linked validation images exceed the trait default (256 words); e.g.
+  // c_memcpy_smoke.hex is ~364 words. Truncated imem yields simulator errors.
+  override protected val cProgramImemWords: Int = 512
+  override protected val cProgramDmemWords: Int = 512
+
   describe("RV32ICore C analog programs") {
     it("array sum", CBinary) {
       runBinaryProgram(
         "/validation/c_array_sum.hex",
         outAddr = 0x80,
         expected = 10
+      )
+    }
+
+    it("fibonacci loop smoke", CBinary) {
+      runBinaryProgram(
+        "/validation/c_fibonacci_smoke.hex",
+        outAddr = 0x80,
+        expected = 21
       )
     }
 
@@ -44,6 +57,40 @@ class CProgramsAnalogSpec
       )
     }
 
+    it("filter prefix sum", CBinary) {
+      runBinaryProgram(
+        "/validation/c_filter_prefix_sum.hex",
+        outAddr = 0x80,
+        expected = 12
+      )
+    }
+
+    it("selection sort writes min/max", CBinary) {
+      runBinaryProgram(
+        "/validation/c_selection_sort.hex",
+        outAddr = 0x80,
+        expected = 1
+      )
+      runBinaryProgram(
+        "/validation/c_selection_sort.hex",
+        outAddr = 0x84,
+        expected = 9
+      )
+    }
+
+    it("binary search found and missing", CBinary) {
+      runBinaryProgram(
+        "/validation/c_binary_search.hex",
+        outAddr = 0x80,
+        expected = 3
+      )
+      runBinaryProgram(
+        "/validation/c_binary_search.hex",
+        outAddr = 0x84,
+        expected = 0
+      )
+    }
+
     it("signed min max control flow", CBinary) {
       runBinaryProgram(
         "/validation/c_signed_min_max_smoke.hex",
@@ -68,6 +115,14 @@ class CProgramsAnalogSpec
       )
     }
 
+    it("gcd smoke", CBinary) {
+      runBinaryProgram(
+        "/validation/c_gcd_smoke.hex",
+        outAddr = 0x84,
+        expected = 6
+      )
+    }
+
     it("call return", CBinary) {
       runBinaryProgram(
         "/validation/c_call_return_smoke.hex",
@@ -84,12 +139,20 @@ class CProgramsAnalogSpec
       )
     }
 
+    it("bit ops mix", CBinary) {
+      runBinaryProgram(
+        "/validation/c_bit_ops_smoke.hex",
+        outAddr = 0x80,
+        expected = BigInt("5FA", 16)
+      )
+    }
+
     it("unsupported opcodes in stream trap before the final store", CBinary) {
       runBinaryProgram(
         "/validation/c_unsupported_opcodes_smoke.hex",
         outAddr = 0x80,
-        // The injected .word 0x00000000 now triggers illegal-instruction trap,
-        // so the result store is never reached and dmem[0x80] remains untouched.
+        // Keep a deterministic sentinel until trap-driven completion signaling
+        // is modeled in this test binary.
         expected = BigInt(50397459)
       )
     }

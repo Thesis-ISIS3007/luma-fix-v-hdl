@@ -34,29 +34,26 @@ class CFxRtBvhProgramSpec
       CBinary
     ) {
       val hex = "/samples/c_fx_rt_bvh_smoke.hex"
-      val cycles = 120000
       val fxOne = BigInt("10000", 16)
       val fxQuarter = BigInt("4000", 16)
 
-      runBinaryProgram(hex, outAddr = 0x80, expected = 3, cycles = cycles)
-      runBinaryProgram(hex, outAddr = 0x84, expected = 1, cycles = cycles)
-      runBinaryProgram(hex, outAddr = 0x88, expected = fxOne, cycles = cycles)
+      runBinaryProgram(hex, outAddr = 0x80, expected = 3)
+      runBinaryProgram(hex, outAddr = 0x84, expected = 1)
+      runBinaryProgram(hex, outAddr = 0x88, expected = fxOne)
       runBinaryProgram(
         hex,
         outAddr = 0x8c,
-        expected = fxQuarter,
-        cycles = cycles
+        expected = fxQuarter
       )
       runBinaryProgram(
         hex,
         outAddr = 0x90,
-        expected = fxQuarter,
-        cycles = cycles
+        expected = fxQuarter
       )
-      runBinaryProgram(hex, outAddr = 0x94, expected = 0, cycles = cycles)
-      runBinaryProgram(hex, outAddr = 0x98, expected = 0, cycles = cycles)
-      runBinaryProgram(hex, outAddr = 0x9c, expected = 0, cycles = cycles)
-      runBinaryProgram(hex, outAddr = 0xa0, expected = fxOne, cycles = cycles)
+      runBinaryProgram(hex, outAddr = 0x94, expected = 0)
+      runBinaryProgram(hex, outAddr = 0x98, expected = 0)
+      runBinaryProgram(hex, outAddr = 0x9c, expected = 0)
+      runBinaryProgram(hex, outAddr = 0xa0, expected = fxOne)
     }
   }
 }

@@ -33,14 +33,12 @@ class CFxProgramSpec
       runBinaryProgram(
         "/validation/c_fx_arith_smoke.hex",
         outAddr = 0x80,
-        expected = BigInt("66000", 16),
-        cycles = 5000
+        expected = BigInt("66000", 16)
       )
       runBinaryProgram(
         "/validation/c_fx_arith_smoke.hex",
         outAddr = 0x84,
-        expected = 24,
-        cycles = 5000
+        expected = 24
       )
     }
 
@@ -51,14 +49,12 @@ class CFxProgramSpec
       runBinaryProgram(
         "/validation/c_fx_div_smoke.hex",
         outAddr = 0x80,
-        expected = BigInt("320000", 16),
-        cycles = 8000
+        expected = BigInt("320000", 16)
       )
       runBinaryProgram(
         "/validation/c_fx_div_smoke.hex",
         outAddr = 0x84,
-        expected = BigInt("A0000", 16),
-        cycles = 8000
+        expected = BigInt("A0000", 16)
       )
     }
 
@@ -70,14 +66,12 @@ class CFxProgramSpec
       runBinaryProgram(
         "/validation/c_fx_dot_product_smoke.hex",
         outAddr = 0x80,
-        expected = BigInt("C4000", 16),
-        cycles = 5000
+        expected = BigInt("C4000", 16)
       )
       runBinaryProgram(
         "/validation/c_fx_dot_product_smoke.hex",
         outAddr = 0x84,
-        expected = 12,
-        cycles = 5000
+        expected = 12
       )
     }
   }

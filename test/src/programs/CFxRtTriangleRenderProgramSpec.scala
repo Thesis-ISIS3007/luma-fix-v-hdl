@@ -19,21 +19,33 @@ class CFxRtTriangleRenderProgramSpec
 
   private val RenderW = 32
   private val RenderH = 24
+  private val DefaultHex = "/samples/c_triangle_render_32x24.hex"
+  private val DefaultImemWords = 16384
+  private val DefaultDmemWords = 16384
 
-  override protected val cProgramImemWords: Int = 16384
-  override protected val cProgramDmemWords: Int = 16384
+  override protected val cProgramImemWords: Int =
+    Option(System.getenv("LUMAFIXV_SAMPLE_IMEM_WORDS"))
+      .filter(_.nonEmpty)
+      .map(_.toInt)
+      .getOrElse(DefaultImemWords)
+  override protected val cProgramDmemWords: Int =
+    Option(System.getenv("LUMAFIXV_SAMPLE_DMEM_WORDS"))
+      .filter(_.nonEmpty)
+      .map(_.toInt)
+      .getOrElse(DefaultDmemWords)
 
   describe("FX 16Q16 triangle render (MMIO log)") {
     it(
       "fx_rt_triangle_render_smoke: streams a 32x24 image through the render log",
       CBinary
     ) {
-      val hex = "/samples/c_triangle_render_32x24.hex"
-      // No BVH; much cheaper per pixel than Cornell — a few M cycles total.
-      val cycles = 5_000_000L
-      val logPath = CornellRenderLogPaths.triangleHwLog
+      val hex = Option(System.getenv("LUMAFIXV_SAMPLE_HEX"))
+        .filter(_.nonEmpty)
+        .map { h => if (h.startsWith("/")) h else s"/samples/$h" }
+        .getOrElse(DefaultHex)
+      val logPath = CornellRenderLogPaths.sampleLogFor(hex)
 
-      val captured = runBinaryProgramWithLog(hex, logPath, cycles)
+      val (captured, steps) = runBinaryProgramWithLog(hex, logPath)
       val expected = 2L + RenderW.toLong * RenderH.toLong
       assert(
         captured == expected,
@@ -43,6 +55,7 @@ class CFxRtTriangleRenderProgramSpec
         Files.size(logPath) == expected * 4L,
         s"log file size ${Files.size(logPath)} != ${expected * 4L} bytes"
       )
+      println(s"[cbinary-log-assert] hex=$hex words=$captured steps=$steps")
     }
   }
 }

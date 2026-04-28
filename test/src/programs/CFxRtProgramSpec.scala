@@ -16,9 +16,9 @@ import test_utils._
 // horizon also has to absorb the 24-iteration software fx_sqrt and a couple
 // of multi-cycle FXDIV stalls (1/a + 1/len for normalize).
 //
-// This test is intentionally **not** tagged CBinary: default ./mill test
-// must run it without requiring a .run-cbinary sentinel; it is a fast,
-// self-contained check of ray–triangle on the FX32 core.
+// This test is intentionally **not** tagged CBinary: it loads a sample hex
+// under `/samples/` (not `/validation/`) and is kept as a fast ray–triangle
+// check separate from the CBinary-tagged validation corpus.
 class CFxRtProgramSpec
     extends AnyFunSpec
     with ChiselSim
@@ -30,31 +30,28 @@ class CFxRtProgramSpec
   describe("FX 16Q16 ray tracer math scaffold") {
     it("fx_rt_triangle_smoke: ray vs. xy equilateral hits at t=1, normal=+z") {
       val hex = "/samples/c_fx_rt_triangle_smoke.hex"
-      val cycles = 30000
       val fxZero = BigInt(0)
       // 16.16: t and unit normal z are 1.0 - 1 ulp; hit z = 1.0 - t is ~1/65536.
       val fxT = BigInt(65535L)
       val fxPosZ = BigInt(1L)
       val fxNz = BigInt(65535L)
 
-      runBinaryProgram(hex, outAddr = 0x80, expected = 1, cycles = cycles)
-      runBinaryProgram(hex, outAddr = 0x84, expected = fxT, cycles = cycles)
+      runBinaryProgram(hex, outAddr = 0x80, expected = 1)
+      runBinaryProgram(hex, outAddr = 0x84, expected = fxT)
       runBinaryProgram(
         hex,
         outAddr = 0x88,
-        expected = fxZero,
-        cycles = cycles
+        expected = fxZero
       )
       runBinaryProgram(
         hex,
         outAddr = 0x8c,
-        expected = fxZero,
-        cycles = cycles
+        expected = fxZero
       )
-      runBinaryProgram(hex, outAddr = 0x90, expected = fxPosZ, cycles = cycles)
-      runBinaryProgram(hex, outAddr = 0x94, expected = 0, cycles = cycles)
-      runBinaryProgram(hex, outAddr = 0x98, expected = 0, cycles = cycles)
-      runBinaryProgram(hex, outAddr = 0x9c, expected = fxNz, cycles = cycles)
+      runBinaryProgram(hex, outAddr = 0x90, expected = fxPosZ)
+      runBinaryProgram(hex, outAddr = 0x94, expected = 0)
+      runBinaryProgram(hex, outAddr = 0x98, expected = 0)
+      runBinaryProgram(hex, outAddr = 0x9c, expected = fxNz)
     }
   }
 }

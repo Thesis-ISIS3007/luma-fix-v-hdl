@@ -30,6 +30,8 @@ class CoreMemoryHarness(
     // on these outputs for the test harness to capture.
     val renderLogValid = Output(Bool())
     val renderLogData = Output(UInt(32.W))
+    val programDone = Output(Bool())
+    val programStatus = Output(UInt(32.W))
   })
 
   val core = Module(
@@ -87,9 +89,28 @@ class CoreMemoryHarness(
   // Stores to this address never reach dmem; instead they get surfaced on
   // renderLogValid/renderLogData so a host-side test can stream pixels out.
   val RenderLogAddr = "h40000000".U(32.W)
-  val logHit = firstWriteFire && (core.io.dmem.req.bits.addr === RenderLogAddr)
+  val ValidationStatusAddr = "h40000004".U(32.W)
+  val ValidationDoneAddr = "h40000008".U(32.W)
+  val ValidationDoneMagic = "hC001D00D".U(32.W)
 
-  when(firstWriteFire && !logHit) {
+  val logHit = firstWriteFire && (core.io.dmem.req.bits.addr === RenderLogAddr)
+  val statusHit = firstWriteFire && (core.io.dmem.req.bits.addr === ValidationStatusAddr)
+  val doneHit = firstWriteFire && (core.io.dmem.req.bits.addr === ValidationDoneAddr)
+
+  val mmioHit = logHit || statusHit || doneHit
+
+  val programDoneReg = RegInit(false.B)
+  val programStatusReg = RegInit(0.U(32.W))
+
+  when(statusHit) {
+    programStatusReg := core.io.dmem.req.bits.wData
+  }
+
+  when(doneHit && (core.io.dmem.req.bits.wData === ValidationDoneMagic)) {
+    programDoneReg := true.B
+  }
+
+  when(firstWriteFire && !mmioHit) {
     dmem.write(dWordAddr, dWriteVec, core.io.dmem.req.bits.wMask.asBools)
   }
 
@@ -97,6 +118,8 @@ class CoreMemoryHarness(
   // that lined up with the store.
   io.renderLogValid := RegNext(logHit, false.B)
   io.renderLogData := RegNext(core.io.dmem.req.bits.wData, 0.U)
+  io.programDone := programDoneReg
+  io.programStatus := programStatusReg
 
   val peekWordAddr = io.dmemPeekAddr(dAddrWidth + 1, 2)
   val peekVec = dmem.read(peekWordAddr, true.B)
