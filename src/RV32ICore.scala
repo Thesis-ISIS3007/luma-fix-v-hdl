@@ -114,9 +114,10 @@ object JumpUnit {
 }
 
 object StoreUnit {
-  def apply(addr: UInt, data: UInt, memSize: UInt): (UInt, UInt) = {
+  def apply(xlen: Int, addr: UInt, data: UInt, memSize: UInt): (UInt, UInt) = {
+    require(xlen == 32, s"StoreUnit currently supports RV32 only, got xlen=$xlen")
     val shift = addr(1, 0)
-    val wData = (data << (shift << 3))(31, 0)
+    val wData = (data << (shift << 3))(xlen - 1, 0)
     val wMask = MuxLookup(memSize, "b1111".U)(
       Seq(
         RV32IMemSize.Byte -> (1.U(4.W) << shift),
@@ -129,11 +130,18 @@ object StoreUnit {
 }
 
 object LoadUnit {
-  def apply(rawData: UInt, addr: UInt, funct3: UInt, unsigned: Bool): UInt = {
+  def apply(
+      xlen: Int,
+      rawData: UInt,
+      addr: UInt,
+      funct3: UInt,
+      unsigned: Bool
+  ): UInt = {
+    require(xlen == 32, s"LoadUnit currently supports RV32 only, got xlen=$xlen")
     val shift = addr(1, 0)
     val byte = (rawData >> (shift << 3))(7, 0)
     val half = (rawData >> (shift(1) << 4))(15, 0)
-    val out = Wire(UInt(32.W))
+    val out = Wire(UInt(xlen.W))
     out := rawData
     switch(funct3) {
       is(RV32IMemFunct3.B) { out := Cat(Fill(24, byte(7) && !unsigned), byte) }
@@ -263,9 +271,10 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   val exAluResult = Mux(isFxDivInEx, effectiveDivOut, alu.io.out)
 
   val (storeWData, storeMask) =
-    StoreUnit(exMem.aluRes, exMem.rs2Val, exMem.ctrl.memSize)
+    StoreUnit(cfg.xlen, exMem.aluRes, exMem.rs2Val, exMem.ctrl.memSize)
 
   val loadData = LoadUnit(
+    cfg.xlen,
     io.dmem.resp.bits,
     exMem.aluRes,
     exMem.funct3,
