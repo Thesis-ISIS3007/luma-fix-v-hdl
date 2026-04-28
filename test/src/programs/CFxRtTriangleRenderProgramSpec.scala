@@ -11,7 +11,7 @@ import test_utils._
 
 // MMIO framebuffer from validation/fx_rt_triangle_render_smoke.c (32x24,
 // one ray-triangle test per pixel, no BVH). Log -> PNG via
-// scripts/fx_rt_log_to_png.py (see scripts/triangle_e2e.sh).
+// scripts/fx_rt_log_to_png.py (PEP 723 + Typer; `uv run` or python3.14 + typer).
 class CFxRtTriangleRenderProgramSpec
     extends AnyFunSpec
     with ChiselSim

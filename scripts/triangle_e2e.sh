@@ -26,7 +26,13 @@ mkdir -p "${repo_root}/scripts/out"
 export LUMAFIXV_OUT_DIR="${LUMAFIXV_OUT_DIR:-${repo_root}/scripts/out}"
 touch "${repo_root}/.run-cbinary"
 ./mill test.testOnly luma_fix_v.CFxRtTriangleRenderProgramSpec
-python3 "${repo_root}/scripts/fx_rt_log_to_png.py" \
-  "${LUMAFIXV_OUT_DIR}/triangle_hw.log.bin" \
-  "${repo_root}/scripts/out/triangle_e2e.png"
+if command -v uv >/dev/null 2>&1; then
+  uv run "${repo_root}/scripts/fx_rt_log_to_png.py" \
+    "${LUMAFIXV_OUT_DIR}/triangle_hw.log.bin" \
+    "${repo_root}/scripts/out/triangle_e2e.png"
+else
+  python3.14 "${repo_root}/scripts/fx_rt_log_to_png.py" \
+    "${LUMAFIXV_OUT_DIR}/triangle_hw.log.bin" \
+    "${repo_root}/scripts/out/triangle_e2e.png"
+fi
 echo "Wrote ${repo_root}/scripts/out/triangle_e2e.png (from ${LUMAFIXV_OUT_DIR}/triangle_hw.log.bin)"
