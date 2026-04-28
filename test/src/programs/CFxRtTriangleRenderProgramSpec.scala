@@ -23,6 +23,16 @@ class CFxRtTriangleRenderProgramSpec
   private val DefaultImemWords = 16384
   private val DefaultDmemWords = 16384
 
+  /** Resolved once at class init so describe/it names match this JVM's env. */
+  private val sampleHexPath: String =
+    Option(System.getenv("LUMAFIXV_SAMPLE_HEX"))
+      .filter(_.nonEmpty)
+      .map { h => if (h.startsWith("/")) h else s"/samples/$h" }
+      .getOrElse(DefaultHex)
+
+  private val sampleLabel: String =
+    sampleHexPath.stripPrefix("/samples/").stripPrefix("/")
+
   override protected val cProgramImemWords: Int =
     Option(System.getenv("LUMAFIXV_SAMPLE_IMEM_WORDS"))
       .filter(_.nonEmpty)
@@ -34,15 +44,12 @@ class CFxRtTriangleRenderProgramSpec
       .map(_.toInt)
       .getOrElse(DefaultDmemWords)
 
-  describe("FX 16Q16 triangle render (MMIO log)") {
+  describe(s"Baremetal sample [$sampleLabel]") {
     it(
-      "fx_rt_triangle_render_smoke: streams a 32x24 image through the render log",
+      s"streams 32x24 image through render log [$sampleLabel]",
       CBinary
     ) {
-      val hex = Option(System.getenv("LUMAFIXV_SAMPLE_HEX"))
-        .filter(_.nonEmpty)
-        .map { h => if (h.startsWith("/")) h else s"/samples/$h" }
-        .getOrElse(DefaultHex)
+      val hex = sampleHexPath
       val logPath = CornellRenderLogPaths.sampleLogFor(hex)
 
       val (captured, steps) = runBinaryProgramWithLog(hex, logPath)
