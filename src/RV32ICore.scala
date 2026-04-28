@@ -513,5 +513,16 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
       !(idEx.ctrl.branch && idEx.ctrl.jump),
       "ID/EX control cannot mark instruction as both branch and jump"
     )
+    assert(!idEx.ctrl.jumpReg || idEx.ctrl.jump, "ID/EX jumpReg requires jump")
+  }
+  when(exMemValid && exMem.ctrl.memRead) {
+    assert(exMem.ctrl.rdWrite, "Load in EX/MEM must enable rd writeback")
+    assert(
+      exMem.ctrl.wbSel === RV32IDecode.WbSelMem,
+      "Load in EX/MEM must select memory writeback source"
+    )
+  }
+  when(exMemValid && exMem.ctrl.memWrite) {
+    assert(!exMem.ctrl.rdWrite, "Store in EX/MEM must not enable rd writeback")
   }
 }
