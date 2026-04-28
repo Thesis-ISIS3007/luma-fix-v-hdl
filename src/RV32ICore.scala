@@ -34,7 +34,6 @@ class IdExPipe extends Bundle {
   val rs1Val = UInt(32.W)
   val rs2Val = UInt(32.W)
   val imm = UInt(32.W)
-  val funct3 = UInt(3.W)
   val ctrl = new DecodeSignals
 }
 
@@ -43,7 +42,6 @@ class ExMemPipe extends Bundle {
   val rd = UInt(6.W)
   val aluRes = UInt(32.W)
   val rs2Val = UInt(32.W)
-  val funct3 = UInt(3.W)
   val ctrl = new DecodeSignals
 }
 
@@ -54,15 +52,15 @@ class MemWbPipe extends Bundle {
 }
 
 object BranchUnit {
-  def apply(funct3: UInt, rs1: UInt, rs2: UInt): Bool = {
-    MuxLookup(funct3, false.B)(
+  def apply(cond: BranchCond.Type, rs1: UInt, rs2: UInt): Bool = {
+    MuxLookup(cond, false.B)(
       Seq(
-        RV32IBranchFunct3.BEQ -> (rs1 === rs2),
-        RV32IBranchFunct3.BNE -> (rs1 =/= rs2),
-        RV32IBranchFunct3.BLT -> (rs1.asSInt < rs2.asSInt),
-        RV32IBranchFunct3.BGE -> (rs1.asSInt >= rs2.asSInt),
-        RV32IBranchFunct3.BLTU -> (rs1 < rs2),
-        RV32IBranchFunct3.BGEU -> (rs1 >= rs2)
+        BranchCond.eq -> (rs1 === rs2),
+        BranchCond.ne -> (rs1 =/= rs2),
+        BranchCond.lt -> (rs1.asSInt < rs2.asSInt),
+        BranchCond.ge -> (rs1.asSInt >= rs2.asSInt),
+        BranchCond.ltu -> (rs1 < rs2),
+        BranchCond.geu -> (rs1 >= rs2)
       )
     )
   }
@@ -114,15 +112,15 @@ object JumpUnit {
 }
 
 object StoreUnit {
-  def apply(xlen: Int, addr: UInt, data: UInt, memSize: UInt): (UInt, UInt) = {
+  def apply(xlen: Int, addr: UInt, data: UInt, memOp: MemOp.Type): (UInt, UInt) = {
     require(xlen == 32, s"StoreUnit currently supports RV32 only, got xlen=$xlen")
     val shift = addr(1, 0)
     val wData = (data << (shift << 3))(xlen - 1, 0)
-    val wMask = MuxLookup(memSize, "b1111".U)(
+    val wMask = MuxLookup(memOp, 0.U(4.W))(
       Seq(
-        RV32IMemSize.Byte -> (1.U(4.W) << shift),
-        RV32IMemSize.Half -> Mux(shift(1), "b1100".U, "b0011".U),
-        RV32IMemSize.Word -> "b1111".U
+        MemOp.sb -> (1.U(4.W) << shift),
+        MemOp.sh -> Mux(shift(1), "b1100".U, "b0011".U),
+        MemOp.sw -> "b1111".U
       )
     )
     (wData, wMask)
@@ -134,8 +132,7 @@ object LoadUnit {
       xlen: Int,
       rawData: UInt,
       addr: UInt,
-      funct3: UInt,
-      unsigned: Bool
+      memOp: MemOp.Type
   ): UInt = {
     require(xlen == 32, s"LoadUnit currently supports RV32 only, got xlen=$xlen")
     val shift = addr(1, 0)
@@ -143,12 +140,12 @@ object LoadUnit {
     val half = (rawData >> (shift(1) << 4))(15, 0)
     val out = Wire(UInt(xlen.W))
     out := rawData
-    switch(funct3) {
-      is(RV32IMemFunct3.B) { out := Cat(Fill(24, byte(7) && !unsigned), byte) }
-      is(RV32IMemFunct3.H) { out := Cat(Fill(16, half(15) && !unsigned), half) }
-      is(RV32IMemFunct3.W) { out := rawData }
-      is(RV32IMemFunct3.BU) { out := Cat(0.U(24.W), byte) }
-      is(RV32IMemFunct3.HU) { out := Cat(0.U(16.W), half) }
+    switch(memOp) {
+      is(MemOp.lb) { out := Cat(Fill(24, byte(7)), byte) }
+      is(MemOp.lh) { out := Cat(Fill(16, half(15)), half) }
+      is(MemOp.lw) { out := rawData }
+      is(MemOp.lbu) { out := Cat(0.U(24.W), byte) }
+      is(MemOp.lhu) { out := Cat(0.U(16.W), half) }
     }
     out
   }
@@ -232,7 +229,7 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
     memWb.wbData
   )
 
-  val branchTaken = idEx.ctrl.branch && BranchUnit(idEx.funct3, exRs1, exRs2)
+  val branchTaken = idEx.ctrl.branch && BranchUnit(idEx.ctrl.branchCond, exRs1, exRs2)
 
   val exJumpTaken = idEx.ctrl.jump || (idEx.ctrl.branch && branchTaken)
   val jumpTarget = JumpUnit(idEx.ctrl.jumpReg, exRs1, idEx.pc, idEx.imm)
@@ -271,14 +268,13 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   val exAluResult = Mux(isFxDivInEx, effectiveDivOut, alu.io.out)
 
   val (storeWData, storeMask) =
-    StoreUnit(cfg.xlen, exMem.aluRes, exMem.rs2Val, exMem.ctrl.memSize)
+    StoreUnit(cfg.xlen, exMem.aluRes, exMem.rs2Val, exMem.ctrl.memOp)
 
   val loadData = LoadUnit(
     cfg.xlen,
     io.dmem.resp.bits,
     exMem.aluRes,
-    exMem.funct3,
-    exMem.ctrl.memUnsigned
+    exMem.ctrl.memOp
   )
 
   val memAccess = exMem.ctrl.memRead || exMem.ctrl.memWrite
@@ -353,7 +349,6 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
         idEx.rs1Val := regFile.io.rs1Data
         idEx.rs2Val := regFile.io.rs2Data
         idEx.imm := decode.imm
-        idEx.funct3 := decode.funct3
         idEx.ctrl := decode.ctrl
       }
     }
@@ -369,7 +364,6 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
         exMem.rd := idEx.rd
         exMem.aluRes := exAluResult
         exMem.rs2Val := exRs2
-        exMem.funct3 := idEx.funct3
         exMem.ctrl := idEx.ctrl
       }
     }.otherwise {

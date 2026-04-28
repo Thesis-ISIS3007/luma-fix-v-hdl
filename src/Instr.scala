@@ -91,6 +91,14 @@ object RV32IMemSize {
   val Word: UInt = 2.U(2.W)
 }
 
+object BranchCond extends ChiselEnum {
+  val none, eq, ne, lt, ge, ltu, geu = Value
+}
+
+object MemOp extends ChiselEnum {
+  val none, lb, lh, lw, lbu, lhu, sb, sh, sw = Value
+}
+
 class DecodeSignals extends Bundle {
   val illegal = Bool()
   val rs1Used = Bool()
@@ -101,10 +109,12 @@ class DecodeSignals extends Bundle {
   val aluOp = AluOp()
   val immSel = ImmSel()
   val branch = Bool()
+  val branchCond = BranchCond()
   val jump = Bool()
   val jumpReg = Bool()
   val memRead = Bool()
   val memWrite = Bool()
+  val memOp = MemOp()
   val memUnsigned = Bool()
   val memSize = UInt(2.W)
   val wbSel = UInt(2.W)
@@ -117,7 +127,6 @@ class DecodedInstruction extends Bundle {
   val rs2 = UInt(6.W)
   val rd = UInt(6.W)
   val funct3 = UInt(3.W)
-  val funct7 = UInt(7.W)
   // Pre-resolved immediate. RV32I uses ImmGen.select(inst, immSel); FX micro-ops
   // can override with a literal value (e.g. 16 for INT2FX shift amount).
   val imm = UInt(32.W)
@@ -167,14 +176,12 @@ object RV32IDecoder {
     val decoded = Wire(new DecodedInstruction)
     val opcode = inst(6, 0)
     val funct3 = inst(14, 12)
-    val funct7 = inst(31, 25)
     val bit30 = inst(30)
 
     decoded.rs1 := Cat(0.U(1.W), inst(19, 15))
     decoded.rs2 := Cat(0.U(1.W), inst(24, 20))
     decoded.rd := Cat(0.U(1.W), inst(11, 7))
     decoded.funct3 := funct3
-    decoded.funct7 := funct7
     decoded.imm := 0.U
 
     decoded.ctrl.illegal := true.B
@@ -186,10 +193,12 @@ object RV32IDecoder {
     decoded.ctrl.aluOp := AluOp.add
     decoded.ctrl.immSel := ImmSel.i
     decoded.ctrl.branch := false.B
+    decoded.ctrl.branchCond := BranchCond.none
     decoded.ctrl.jump := false.B
     decoded.ctrl.jumpReg := false.B
     decoded.ctrl.memRead := false.B
     decoded.ctrl.memWrite := false.B
+    decoded.ctrl.memOp := MemOp.none
     decoded.ctrl.memUnsigned := false.B
     decoded.ctrl.memSize := 2.U
     decoded.ctrl.wbSel := RV32IDecode.WbSelAlu
@@ -231,6 +240,16 @@ object RV32IDecoder {
         decoded.ctrl.rs1Used := true.B
         decoded.ctrl.rs2Used := true.B
         decoded.ctrl.branch := true.B
+        decoded.ctrl.branchCond := MuxLookup(funct3, BranchCond.none)(
+          Seq(
+            RV32IBranchFunct3.BEQ -> BranchCond.eq,
+            RV32IBranchFunct3.BNE -> BranchCond.ne,
+            RV32IBranchFunct3.BLT -> BranchCond.lt,
+            RV32IBranchFunct3.BGE -> BranchCond.ge,
+            RV32IBranchFunct3.BLTU -> BranchCond.ltu,
+            RV32IBranchFunct3.BGEU -> BranchCond.geu
+          )
+        )
         decoded.ctrl.immSel := ImmSel.b
       }
       is(RV32IOpcode.LOAD) {
@@ -241,6 +260,15 @@ object RV32IDecoder {
         decoded.ctrl.aluOp := AluOp.add
         decoded.ctrl.immSel := ImmSel.i
         decoded.ctrl.memRead := true.B
+        decoded.ctrl.memOp := MuxLookup(funct3, MemOp.lw)(
+          Seq(
+            RV32IMemFunct3.B -> MemOp.lb,
+            RV32IMemFunct3.H -> MemOp.lh,
+            RV32IMemFunct3.W -> MemOp.lw,
+            RV32IMemFunct3.BU -> MemOp.lbu,
+            RV32IMemFunct3.HU -> MemOp.lhu
+          )
+        )
         decoded.ctrl.memUnsigned := funct3(2)
         decoded.ctrl.memSize := MuxLookup(funct3, RV32IMemSize.Word)(
           Seq(
@@ -261,6 +289,13 @@ object RV32IDecoder {
         decoded.ctrl.aluOp := AluOp.add
         decoded.ctrl.immSel := ImmSel.s
         decoded.ctrl.memWrite := true.B
+        decoded.ctrl.memOp := MuxLookup(funct3, MemOp.sw)(
+          Seq(
+            RV32IMemFunct3.B -> MemOp.sb,
+            RV32IMemFunct3.H -> MemOp.sh,
+            RV32IMemFunct3.W -> MemOp.sw
+          )
+        )
         decoded.ctrl.memSize := MuxLookup(funct3, RV32IMemSize.Word)(
           Seq(
             RV32IMemFunct3.B -> RV32IMemSize.Byte,
@@ -337,7 +372,6 @@ object FxDecoder {
     decoded.rs2 := archRs2
     decoded.rd := archRd
     decoded.funct3 := funct3
-    decoded.funct7 := funct7
     decoded.imm := 0.U(32.W)
 
     decoded.ctrl.illegal := true.B
@@ -349,10 +383,12 @@ object FxDecoder {
     decoded.ctrl.aluOp := AluOp.add
     decoded.ctrl.immSel := ImmSel.i
     decoded.ctrl.branch := false.B
+    decoded.ctrl.branchCond := BranchCond.none
     decoded.ctrl.jump := false.B
     decoded.ctrl.jumpReg := false.B
     decoded.ctrl.memRead := false.B
     decoded.ctrl.memWrite := false.B
+    decoded.ctrl.memOp := MemOp.none
     decoded.ctrl.memUnsigned := false.B
     decoded.ctrl.memSize := 2.U
     decoded.ctrl.wbSel := RV32IDecode.WbSelAlu
