@@ -501,4 +501,17 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   io.debugWbRd := memWb.rd(4, 0)
   io.debugWbData := memWb.wbData
 
+  // Invariants to catch control/commit bugs early in simulation.
+  when(exMemValid) {
+    assert(
+      !(exMem.ctrl.memRead && exMem.ctrl.memWrite),
+      "EX/MEM instruction cannot read and write memory simultaneously"
+    )
+  }
+  when(idExValid) {
+    assert(
+      !(idEx.ctrl.branch && idEx.ctrl.jump),
+      "ID/EX control cannot mark instruction as both branch and jump"
+    )
+  }
 }
