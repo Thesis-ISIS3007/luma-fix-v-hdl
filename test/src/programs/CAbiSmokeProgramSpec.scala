@@ -16,7 +16,7 @@ class CAbiSmokeProgramSpec
   describe("RV32ICore C ABI smoke program") {
     it("runs a GCC-compiled C program from a binary memory file", CBinary) {
       runBinaryProgram(
-        "/programs/c_abi_smoke.hex",
+        "/validation/c_abi_smoke.hex",
         outAddr = 0x80,
         expected = 55
       )

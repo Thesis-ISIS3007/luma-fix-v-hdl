@@ -14,7 +14,7 @@ class CProgramsAnalogSpec
   describe("RV32ICore C analog programs") {
     it("array sum", CBinary) {
       runBinaryProgram(
-        "/programs/c_array_sum.hex",
+        "/validation/c_array_sum.hex",
         outAddr = 0x80,
         expected = 10
       )
@@ -22,7 +22,7 @@ class CProgramsAnalogSpec
 
     it("memcpy", CBinary) {
       runBinaryProgram(
-        "/programs/c_memcpy_smoke.hex",
+        "/validation/c_memcpy_smoke.hex",
         outAddr = 0x80,
         expected = 1122
       )
@@ -30,7 +30,7 @@ class CProgramsAnalogSpec
 
     it("memset", CBinary) {
       runBinaryProgram(
-        "/programs/c_memset_smoke.hex",
+        "/validation/c_memset_smoke.hex",
         outAddr = 0x80,
         expected = BigInt("7A7A7A7A", 16)
       )
@@ -38,7 +38,7 @@ class CProgramsAnalogSpec
 
     it("counted loop early exit", CBinary) {
       runBinaryProgram(
-        "/programs/c_counted_loop_smoke.hex",
+        "/validation/c_counted_loop_smoke.hex",
         outAddr = 0x80,
         expected = 3
       )
@@ -46,7 +46,7 @@ class CProgramsAnalogSpec
 
     it("signed min max control flow", CBinary) {
       runBinaryProgram(
-        "/programs/c_signed_min_max_smoke.hex",
+        "/validation/c_signed_min_max_smoke.hex",
         outAddr = 0x80,
         expected = 902
       )
@@ -54,7 +54,7 @@ class CProgramsAnalogSpec
 
     it("software multiply via shift-add", CBinary) {
       runBinaryProgram(
-        "/programs/c_shift_add_mul_smoke.hex",
+        "/validation/c_shift_add_mul_smoke.hex",
         outAddr = 0x80,
         expected = 18
       )
@@ -62,7 +62,7 @@ class CProgramsAnalogSpec
 
     it("division remainder via subtraction", CBinary) {
       runBinaryProgram(
-        "/programs/c_div_rem_sub_smoke.hex",
+        "/validation/c_div_rem_sub_smoke.hex",
         outAddr = 0x80,
         expected = 302
       )
@@ -70,7 +70,7 @@ class CProgramsAnalogSpec
 
     it("call return", CBinary) {
       runBinaryProgram(
-        "/programs/c_call_return_smoke.hex",
+        "/validation/c_call_return_smoke.hex",
         outAddr = 0x80,
         expected = 1
       )
@@ -78,7 +78,7 @@ class CProgramsAnalogSpec
 
     it("branch torture", CBinary) {
       runBinaryProgram(
-        "/programs/c_branch_torture_smoke.hex",
+        "/validation/c_branch_torture_smoke.hex",
         outAddr = 0x80,
         expected = 6
       )
@@ -86,7 +86,7 @@ class CProgramsAnalogSpec
 
     it("unsupported opcodes in stream trap before the final store", CBinary) {
       runBinaryProgram(
-        "/programs/c_unsupported_opcodes_smoke.hex",
+        "/validation/c_unsupported_opcodes_smoke.hex",
         outAddr = 0x80,
         // The injected .word 0x00000000 now triggers illegal-instruction trap,
         // so the result store is never reached and dmem[0x80] remains untouched.

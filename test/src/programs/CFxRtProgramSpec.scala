@@ -29,7 +29,7 @@ class CFxRtProgramSpec
 
   describe("FX 16Q16 ray tracer math scaffold") {
     it("fx_rt_triangle_smoke: ray vs. xy equilateral hits at t=1, normal=+z") {
-      val hex = "/programs/c_fx_rt_triangle_smoke.hex"
+      val hex = "/samples/c_fx_rt_triangle_smoke.hex"
       val cycles = 30000
       val fxZero = BigInt(0)
       // 16.16: t and unit normal z are 1.0 - 1 ulp; hit z = 1.0 - t is ~1/65536.

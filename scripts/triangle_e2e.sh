@@ -11,17 +11,10 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${repo_root}"
 
 echo "==> 1/2: fx_rt_triangle_smoke (dmem / intersection)"
-make -C "${repo_root}/validation" out/c_fx_rt_triangle_smoke.hex
-mkdir -p "${repo_root}/test/resources/programs"
-cp -f "${repo_root}/validation/out/c_fx_rt_triangle_smoke.hex" \
-  "${repo_root}/test/resources/programs/"
 ./mill test.testOnly luma_fix_v.CFxRtProgramSpec
 echo "OK: intersection smoke passed."
 
 echo "==> 2/2: fx_rt_triangle_render_smoke (MMIO log -> PNG)"
-make -C "${repo_root}/validation" out/c_fx_rt_triangle_render_smoke.hex
-cp -f "${repo_root}/validation/out/c_fx_rt_triangle_render_smoke.hex" \
-  "${repo_root}/test/resources/programs/"
 mkdir -p "${repo_root}/scripts/out"
 export LUMAFIXV_OUT_DIR="${LUMAFIXV_OUT_DIR:-${repo_root}/scripts/out}"
 touch "${repo_root}/.run-cbinary"

@@ -33,7 +33,7 @@ class CFxRtBvhProgramSpec
       "fx_rt_bvh_smoke: builds a 4-triangle BVH and traverses to a front-quad hit",
       CBinary
     ) {
-      val hex = "/programs/c_fx_rt_bvh_smoke.hex"
+      val hex = "/samples/c_fx_rt_bvh_smoke.hex"
       val cycles = 120000
       val fxOne = BigInt("10000", 16)
       val fxQuarter = BigInt("4000", 16)

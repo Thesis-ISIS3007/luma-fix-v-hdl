@@ -31,13 +31,13 @@ class CFxProgramSpec
       // h = 6.375 = 0x66000 in 16Q16. The companion store at 0x84 is the
       // integer projection (12 + 12 = 24).
       runBinaryProgram(
-        "/programs/c_fx_arith_smoke.hex",
+        "/validation/c_fx_arith_smoke.hex",
         outAddr = 0x80,
         expected = BigInt("66000", 16),
         cycles = 5000
       )
       runBinaryProgram(
-        "/programs/c_fx_arith_smoke.hex",
+        "/validation/c_fx_arith_smoke.hex",
         outAddr = 0x84,
         expected = 24,
         cycles = 5000
@@ -49,13 +49,13 @@ class CFxProgramSpec
       // FXDIV stalls ~50 cycles per issue and the program issues 7 of them,
       // so we give the simulator a generous horizon.
       runBinaryProgram(
-        "/programs/c_fx_div_smoke.hex",
+        "/validation/c_fx_div_smoke.hex",
         outAddr = 0x80,
         expected = BigInt("320000", 16),
         cycles = 8000
       )
       runBinaryProgram(
-        "/programs/c_fx_div_smoke.hex",
+        "/validation/c_fx_div_smoke.hex",
         outAddr = 0x84,
         expected = BigInt("A0000", 16),
         cycles = 8000
@@ -68,13 +68,13 @@ class CFxProgramSpec
     ) {
       // r = 12.25 = 0xC4000 in 16Q16; integer projection = 12.
       runBinaryProgram(
-        "/programs/c_fx_dot_product_smoke.hex",
+        "/validation/c_fx_dot_product_smoke.hex",
         outAddr = 0x80,
         expected = BigInt("C4000", 16),
         cycles = 5000
       )
       runBinaryProgram(
-        "/programs/c_fx_dot_product_smoke.hex",
+        "/validation/c_fx_dot_product_smoke.hex",
         outAddr = 0x84,
         expected = 12,
         cycles = 5000

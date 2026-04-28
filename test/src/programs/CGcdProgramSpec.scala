@@ -13,7 +13,7 @@ class CGcdProgramSpec
   describe("RV32ICore C GCD program") {
     it("runs a GCC-compiled C GCD program from a binary memory file", CBinary) {
       runBinaryProgram(
-        "/programs/c_gcd_smoke.hex",
+        "/validation/c_gcd_smoke.hex",
         outAddr = 0x84,
         expected = 6
       )
