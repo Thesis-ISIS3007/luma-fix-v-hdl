@@ -10,8 +10,6 @@ cd "${repo_root}"
 mkdir -p "${repo_root}/scripts/out"
 export LUMAFIXV_OUT_DIR="${LUMAFIXV_OUT_DIR:-${repo_root}/scripts/out}"
 touch "${repo_root}/.run-cbinary"
-./mill test -z "fx_rt_cornell_smoke"
-python3 "${repo_root}/scripts/fx_rt_log_to_ppm.py" \
-  "${LUMAFIXV_OUT_DIR}/cornell_smoke.log.bin" \
-  "${repo_root}/scripts/out/cornell_e2e.ppm"
-echo "Wrote ${repo_root}/scripts/out/cornell_e2e.ppm (from ${LUMAFIXV_OUT_DIR}/cornell_smoke.log.bin)"
+echo >&2 "cornell_e2e.sh: disabled — CFxRtCornellProgramSpec (fx_rt_cornell_smoke) was removed from the repo."
+echo >&2 "Build hex with make -C validation; run ChiselSim manually if you need cornell_smoke.log.bin."
+exit 1

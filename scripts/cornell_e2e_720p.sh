@@ -29,9 +29,5 @@ mkdir -p "${repo_root}/scripts/out"
 export LUMAFIXV_OUT_DIR="${LUMAFIXV_OUT_DIR:-${repo_root}/scripts/out}"
 export LUMAFIXV_CORNELL_720P=1
 touch "${repo_root}/.run-cbinary"
-# Unique substring in the 720p test name; see CFxRtCornell720pProgramSpec.
-./mill test -z 1280x720
-python3 "${repo_root}/scripts/fx_rt_log_to_ppm.py" \
-  "${LUMAFIXV_OUT_DIR}/cornell_720p.log.bin" \
-  "${repo_root}/scripts/out/cornell_720p.ppm"
-echo "Wrote ${repo_root}/scripts/out/cornell_720p.ppm"
+echo >&2 "cornell_e2e_720p.sh: disabled — no Mill program spec for 1280x720 Cornell (hex is staged above)."
+exit 1

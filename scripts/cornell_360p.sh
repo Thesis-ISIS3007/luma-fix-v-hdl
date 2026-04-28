@@ -11,4 +11,4 @@ mkdir -p test/resources/programs
 cp validation/out/c_fx_rt_cornell_360p.hex test/resources/programs/
 echo "Staged test/resources/programs/c_fx_rt_cornell_360p.hex"
 echo "E2E (long):  ./scripts/cornell_e2e_360p.sh"
-echo "Suite only:  ./mill test -z 640x360"
+echo "Suite only:  (no Mill program spec for 640x360 Cornell in this repo)"
