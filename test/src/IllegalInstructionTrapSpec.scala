@@ -6,7 +6,10 @@ import chisel3.simulator.scalatest.ChiselSim
 
 import test_utils._
 
-class IllegalInstructionTrapSpec extends AnyFunSpec with ChiselSim with ISATestSupport {
+class IllegalInstructionTrapSpec
+    extends AnyFunSpec
+    with ChiselSim
+    with ISATestSupport {
   describe("RV32ICore illegal-instruction trap") {
     val TrapVector = 0x80
     val IllegalCause = 2

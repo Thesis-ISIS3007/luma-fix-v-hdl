@@ -49,9 +49,9 @@ trait CBinaryProgramSupport { this: ChiselSim =>
     stepsOut
   }
 
-  /** Runs a C binary that streams pixels through the MMIO render log,
-    * appending every valid render-log word to `logPath` as a little-endian
-    * uint32. Returns the number of words captured.
+  /** Runs a C binary that streams pixels through the MMIO render log, appending
+    * every valid render-log word to `logPath` as a little-endian uint32.
+    * Returns the number of words captured.
     *
     * The simulator runs until the program emits MMIO done.
     */
@@ -97,7 +97,9 @@ trait CBinaryProgramSupport { this: ChiselSim =>
       out.flush()
       out.close()
     }
-    println(s"[cbinary-log] program=$resourcePath steps=$steps words=$count path=$logPath")
+    println(
+      s"[cbinary-log] program=$resourcePath steps=$steps words=$count path=$logPath"
+    )
     (count, steps)
   }
 }

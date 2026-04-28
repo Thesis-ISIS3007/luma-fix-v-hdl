@@ -7,7 +7,8 @@ object Main extends App {
 
   ChiselStage.emitSystemVerilogFile(
     new LumaFixV(parsed.cfg),
-    args = (Seq("--target-dir", parsed.targetDir) ++ parsed.chiselForward).toArray,
+    args =
+      (Seq("--target-dir", parsed.targetDir) ++ parsed.chiselForward).toArray,
     firtoolOpts = Array(
       "-disable-all-randomization",
       "-strip-debug-info"
@@ -35,7 +36,7 @@ private[luma_fix_v] object MainArgs {
   ): (String, Seq[String]) =
     rest match {
       case value +: tail => (value, tail)
-      case _ =>
+      case _             =>
         throw new IllegalArgumentException(s"Missing value for $name")
     }
 

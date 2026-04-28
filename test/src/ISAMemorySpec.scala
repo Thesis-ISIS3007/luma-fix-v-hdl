@@ -33,9 +33,11 @@ class ISAMemorySpec extends AnyFunSpec with ChiselSim with ISATestSupport {
       assert(regs(8) == BigInt("12345000", 16))
     }
 
-    it("detects and squashes misaligned half/word accesses (no trap path yet)") {
+    it(
+      "detects and squashes misaligned half/word accesses (no trap path yet)"
+    ) {
       val pb = new ProgramBuilder()
-      pb.emit(iType(0x07B, 0, 0x0, 1, 0x13)) // x1 = 123
+      pb.emit(iType(0x07b, 0, 0x0, 1, 0x13)) // x1 = 123
       pb.emit(sType(0x002, 1, 0, 0x2, 0x23)) // sw x1, 2(x0)  (misaligned)
       pb.emit(iType(0x002, 0, 0x2, 2, 0x03)) // lw x2, 2(x0)  (misaligned)
       pb.emit(iType(0x001, 0, 0x1, 3, 0x03)) // lh x3, 1(x0)  (misaligned)

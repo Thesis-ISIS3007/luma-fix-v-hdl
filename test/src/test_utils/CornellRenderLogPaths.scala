@@ -4,8 +4,8 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 /** Stable locations for MMIO render logs so e2e scripts can `export
-  * LUMAFIXV_OUT_DIR=.../scripts/out` and find files next to decoded images. Mill
-  * may run tests from a worker sandbox, but a repo-relative `scripts/out`
+  * LUMAFIXV_OUT_DIR=.../scripts/out` and find files next to decoded images.
+  * Mill may run tests from a worker sandbox, but a repo-relative `scripts/out`
   * is still used unless overridden.
   */
 object CornellRenderLogPaths {
@@ -44,7 +44,7 @@ object CornellRenderLogPaths {
   def sampleLogFor(sampleHex: String): Path =
     Option(System.getenv("LUMAFIXV_SAMPLE_LOG")) match {
       case Some(s) if s.nonEmpty => Paths.get(s)
-      case _ =>
+      case _                     =>
         val baseName = sampleHex.stripPrefix("/samples/").stripSuffix(".hex")
         outDir.resolve(s"${baseName}.log.bin")
     }

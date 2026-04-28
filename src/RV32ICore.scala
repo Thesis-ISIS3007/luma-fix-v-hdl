@@ -119,8 +119,16 @@ object JumpUnit {
 }
 
 object StoreUnit {
-  def apply(xlen: Int, addr: UInt, data: UInt, memOp: MemOp.Type): (UInt, UInt) = {
-    require(xlen == 32, s"StoreUnit currently supports RV32 only, got xlen=$xlen")
+  def apply(
+      xlen: Int,
+      addr: UInt,
+      data: UInt,
+      memOp: MemOp.Type
+  ): (UInt, UInt) = {
+    require(
+      xlen == 32,
+      s"StoreUnit currently supports RV32 only, got xlen=$xlen"
+    )
     val shift = addr(1, 0)
     val wData = (data << (shift << 3))(xlen - 1, 0)
     val wMask = MuxLookup(memOp, 0.U(4.W))(
@@ -141,7 +149,10 @@ object LoadUnit {
       addr: UInt,
       memOp: MemOp.Type
   ): UInt = {
-    require(xlen == 32, s"LoadUnit currently supports RV32 only, got xlen=$xlen")
+    require(
+      xlen == 32,
+      s"LoadUnit currently supports RV32 only, got xlen=$xlen"
+    )
     val shift = addr(1, 0)
     val byte = (rawData >> (shift << 3))(7, 0)
     val half = (rawData >> (shift(1) << 4))(15, 0)
@@ -246,7 +257,8 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
     memWb.wbData
   )
 
-  val branchTaken = idEx.ctrl.branch && BranchUnit(idEx.ctrl.branchCond, exRs1, exRs2)
+  val branchTaken =
+    idEx.ctrl.branch && BranchUnit(idEx.ctrl.branchCond, exRs1, exRs2)
 
   val exJumpTaken = idEx.ctrl.jump || (idEx.ctrl.branch && branchTaken)
   val jumpTarget = JumpUnit(idEx.ctrl.jumpReg, exRs1, idEx.pc, idEx.imm)
@@ -344,7 +356,8 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   )
   // No trap path yet: detect and squash misaligned accesses so they don't hit
   // memory and don't commit a bogus load result.
-  val memAccess = (exMem.ctrl.memRead || exMem.ctrl.memWrite) && !misalignedMemAccess
+  val memAccess =
+    (exMem.ctrl.memRead || exMem.ctrl.memWrite) && !misalignedMemAccess
   val memRespNeeded = exMem.ctrl.memRead && !misalignedMemAccess
   val memReqAccepted = !memAccess || io.dmem.req.ready
   val memRespReady = !memRespNeeded || io.dmem.resp.valid
@@ -366,7 +379,8 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   val trapFlush = illegalTrap && !branchFlush
   val flush = branchFlush || trapFlush
 
-  val fetchBlocked = rawHazardStall || !pipeReady || seq.io.holdFetch || trapFlush
+  val fetchBlocked =
+    rawHazardStall || !pipeReady || seq.io.holdFetch || trapFlush
   // IF only advances when the request is accepted and an instruction is
   // available in the same cycle.
   val fetchFire = io.imem.req.fire && io.imem.resp.valid

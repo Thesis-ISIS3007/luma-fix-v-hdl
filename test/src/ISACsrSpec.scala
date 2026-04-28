@@ -11,7 +11,7 @@ class ISACsrSpec extends AnyFunSpec with ChiselSim with ISATestSupport {
     it("executes CSRRW/CSRRS/CSRRC and immediate variants") {
       val pb = new ProgramBuilder()
       // x1 = 0xAA
-      pb.emit(iType(0x0AA, 0, 0x0, 1, 0x13))
+      pb.emit(iType(0x0aa, 0, 0x0, 1, 0x13))
       // old(mstatus=0) -> x2 ; mstatus = x1 (0xAA)
       pb.emit(csrrw(2, 0x300, 1))
       // old(0xAA) -> x3 ; mstatus |= x1 (still 0xAA)

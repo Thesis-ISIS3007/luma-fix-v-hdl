@@ -94,8 +94,10 @@ class CoreMemoryHarness(
   val ValidationDoneMagic = "hC001D00D".U(32.W)
 
   val logHit = firstWriteFire && (core.io.dmem.req.bits.addr === RenderLogAddr)
-  val statusHit = firstWriteFire && (core.io.dmem.req.bits.addr === ValidationStatusAddr)
-  val doneHit = firstWriteFire && (core.io.dmem.req.bits.addr === ValidationDoneAddr)
+  val statusHit =
+    firstWriteFire && (core.io.dmem.req.bits.addr === ValidationStatusAddr)
+  val doneHit =
+    firstWriteFire && (core.io.dmem.req.bits.addr === ValidationDoneAddr)
 
   val mmioHit = logHit || statusHit || doneHit
 
