@@ -359,16 +359,23 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   // While the FX sequencer is mid-sequence it holds fetch so the same FX
   // instruction stays latched in IF/ID and the next micro-op can be cracked.
   // FXDIV adds another fetch-block reason via pipeReady.
-  val fetchBlocked = rawHazardStall || !pipeReady || seq.io.holdFetch
+  val branchFlush = exJumpTaken && idExValid
+  val illegalTrap = ifIdValid && decode.ctrl.illegal
+  // ID-stage illegal trap only takes effect when no older EX-stage redirect
+  // is in flight.
+  val trapFlush = illegalTrap && !branchFlush
+  val flush = branchFlush || trapFlush
+
+  val fetchBlocked = rawHazardStall || !pipeReady || seq.io.holdFetch || trapFlush
   // IF only advances when the request is accepted and an instruction is
   // available in the same cycle.
   val fetchFire = io.imem.req.fire && io.imem.resp.valid
 
-  val flush = exJumpTaken && idExValid
-
-  val nextPC = Mux(flush, jumpTarget, pc + 4.U)
-  when(flush) {
+  val nextPC = Mux(branchFlush, jumpTarget, Mux(trapFlush, csrMtvec, pc + 4.U))
+  when(branchFlush) {
     pc := jumpTarget
+  }.elsewhen(trapFlush) {
+    pc := csrMtvec
   }.elsewhen(fetchFire) {
     pc := pc + 4.U
   }
@@ -382,6 +389,11 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   // otherwise a stale FX instruction would resume after the branch resolves.
   when(flush) {
     ifIdValid := false.B
+  }
+
+  when(trapFlush) {
+    csrMepc := ifId.pc
+    csrMcause := 2.U // Illegal instruction
   }
 
   val injectBubble = rawHazardStall || flush

@@ -84,11 +84,13 @@ class CProgramsAnalogSpec
       )
     }
 
-    it("unsupported opcodes in stream", CBinary) {
+    it("unsupported opcodes in stream trap before the final store", CBinary) {
       runBinaryProgram(
         "/programs/c_unsupported_opcodes_smoke.hex",
         outAddr = 0x80,
-        expected = 8
+        // The injected .word 0x00000000 now triggers illegal-instruction trap,
+        // so the result store is never reached and dmem[0x80] remains untouched.
+        expected = BigInt(50397459)
       )
     }
   }
