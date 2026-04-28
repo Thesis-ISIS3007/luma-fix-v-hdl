@@ -15,8 +15,8 @@ class UnsupportedOpcodesProgramSpec
       val pb = new ProgramBuilder()
 
       pb.emit(iType(5, 0, 0x0, 1, 0x13)) // x1 = 5
-      pb.emit(0x0000000f) // fence (unsupported)
-      pb.emit(0x00000073) // ecall/system (unsupported)
+      pb.emit(0x0000000f) // fence (legal no-op)
+      pb.emit(0x00000073) // ecall (legal no-op until trap path exists)
       pb.nops(2)
       pb.emit(iType(3, 1, 0x0, 2, 0x13)) // x2 = x1 + 3
 

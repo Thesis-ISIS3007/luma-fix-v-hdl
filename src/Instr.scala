@@ -55,6 +55,7 @@ object RV32IOpcode {
   val STORE: UInt = "b0100011".U(7.W)
   val OPIMM: UInt = "b0010011".U(7.W)
   val OP: UInt = "b0110011".U(7.W)
+  val MISC_MEM: UInt = "b0001111".U(7.W)
   val SYSTEM: UInt = "b1110011".U(7.W)
 }
 
@@ -354,8 +355,24 @@ object RV32IDecoder {
           is(RV32IAluFunct3.AND) { decoded.ctrl.aluOp := AluOp.and }
         }
       }
+      is(RV32IOpcode.MISC_MEM) {
+        // FENCE / FENCE.I are currently treated as architecturally legal no-ops.
+        when(funct3 === "b000".U || funct3 === "b001".U) {
+          decoded.ctrl.illegal := false.B
+        }
+      }
       is(RV32IOpcode.SYSTEM) {
         switch(funct3) {
+          // ECALL/EBREAK currently decode as legal no-ops (no trap path yet).
+          is("b000".U) {
+            when(
+              (decoded.rd === 0.U) &&
+                (decoded.rs1 === 0.U) &&
+                ((decoded.csrAddr === 0.U) || (decoded.csrAddr === 1.U))
+            ) {
+              decoded.ctrl.illegal := false.B
+            }
+          }
           // Zicsr: CSRRW/CSRRS/CSRRC
           is("b001".U) {
             decoded.ctrl.illegal := false.B

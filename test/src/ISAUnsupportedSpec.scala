@@ -7,13 +7,9 @@ import chisel3.simulator.scalatest.ChiselSim
 
 class ISAUnsupportedSpec extends AnyFunSpec with ChiselSim {
   describe("RV32I unsupported opcodes") {
-    it("marks system and fence opcodes illegal") {
+    it("marks reserved system encodings illegal") {
       simulate(new ISADecoderProbe()) { c =>
         val illegalInstructions = Seq(
-          0x0000000f, // fence
-          0x0000100f, // fence.i
-          0x00000073, // ecall
-          0x00100073, // ebreak
           0x02000073, // reserved system encoding
           0x12300073 // arbitrary unsupported system opcode pattern
         )
