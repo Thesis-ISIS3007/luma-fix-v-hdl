@@ -32,11 +32,12 @@ class CoreMemoryHarness(
     val renderLogData = Output(UInt(32.W))
     val programDone = Output(Bool())
     val programStatus = Output(UInt(32.W))
+    val uarch = new UarchProfileIO
   })
 
   val core = Module(
     new RV32ICore(
-      CoreConfig(resetVector = resetVector)
+      CoreConfig(resetVector = resetVector, uarchProfile = true)
     )
   )
   val imem = Mem(imemWords, UInt(32.W))
@@ -134,4 +135,7 @@ class CoreMemoryHarness(
   io.debugWbValid := core.io.debugWbValid
   io.debugWbRd := core.io.debugWbRd
   io.debugWbData := core.io.debugWbData
+
+  val coreProfile = core.io.asInstanceOf[RV32ICoreProfileIO]
+  io.uarch := coreProfile.uarch
 }

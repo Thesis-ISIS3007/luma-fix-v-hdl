@@ -60,5 +60,8 @@ generated/
 out/
 build/
 
+# Generated uarch stats from validation/sample sims
+test/uarch-out/
+
 .run-cbinary
 .coursier-cache/

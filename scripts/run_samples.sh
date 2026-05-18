@@ -35,6 +35,9 @@ run_sample() {
   local hex_name="c_${sample_id}.hex"
   local log_path="${out_dir}/c_${sample_id}.log.bin"
   local png_path="${out_dir}/${sample_id}.png"
+  local uarch_json="${out_dir}/${sample_id}_uarch.json"
+  local uarch_png="${out_dir}/${sample_id}_uarch.png"
+  local uarch_ops_png="${out_dir}/${sample_id}_uarch_custom0_ops.png"
   local imem_words="16384"
   local dmem_words="16384"
 
@@ -52,16 +55,34 @@ run_sample() {
     LUMAFIXV_SAMPLE_LOG="${log_path}" \
     LUMAFIXV_SAMPLE_IMEM_WORDS="${imem_words}" \
     LUMAFIXV_SAMPLE_DMEM_WORDS="${dmem_words}" \
+    LUMAFIXV_UARCH_STATS="${uarch_json}" \
     ./mill test.testOnly luma_fix_v.CFxRtTriangleRenderProgramSpec; then
     return 1
   fi
+
+  plot_uarch() {
+    if command -v uv >/dev/null 2>&1; then
+      uv run "${repo_root}/scripts/plot_uarch_stats.py" "${uarch_json}" -o "${uarch_png}"
+    else
+      python3.14 "${repo_root}/scripts/plot_uarch_stats.py" "${uarch_json}" -o "${uarch_png}"
+    fi
+  }
 
   if command -v uv >/dev/null 2>&1; then
     uv run "${repo_root}/scripts/fx_rt_log_to_png.py" "${log_path}" "${png_path}"
   else
     python3.14 "${repo_root}/scripts/fx_rt_log_to_png.py" "${log_path}" "${png_path}"
   fi
+  if [[ -f "${uarch_json}" ]]; then
+    plot_uarch
+  fi
   echo "Wrote ${png_path}"
+  if [[ -f "${uarch_png}" ]]; then
+    echo "Wrote ${uarch_png} (stalls)"
+  fi
+  if [[ -f "${uarch_ops_png}" ]]; then
+    echo "Wrote ${uarch_ops_png} (CUSTOM-0 ops)"
+  fi
 }
 
 run_one() {

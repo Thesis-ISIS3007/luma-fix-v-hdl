@@ -168,15 +168,23 @@ object LoadUnit {
   }
 }
 
+class RV32ICoreIO extends Bundle {
+  val imem = new InstrBusIO
+  val dmem = new DataBusIO
+  val debugPC = Output(UInt(32.W))
+  val debugWbValid = Output(Bool())
+  val debugWbRd = Output(UInt(5.W))
+  val debugWbData = Output(UInt(32.W))
+}
+
+class RV32ICoreProfileIO extends RV32ICoreIO {
+  val uarch = new UarchProfileIO
+}
+
 class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
-  val io = IO(new Bundle {
-    val imem = new InstrBusIO
-    val dmem = new DataBusIO
-    val debugPC = Output(UInt(32.W))
-    val debugWbValid = Output(Bool())
-    val debugWbRd = Output(UInt(5.W))
-    val debugWbData = Output(UInt(32.W))
-  })
+  val io =
+    if (cfg.uarchProfile) IO(new RV32ICoreProfileIO)
+    else IO(new RV32ICoreIO)
 
   val regFile = Module(new RegFile)
   val alu = Module(new Alu)
@@ -513,6 +521,36 @@ class RV32ICore(cfg: CoreConfig = CoreConfig()) extends Module {
   io.debugWbValid := memWbValid && memWb.rdWrite && !memWb.rd(5)
   io.debugWbRd := memWb.rd(4, 0)
   io.debugWbData := memWb.wbData
+
+  val memStall = exMemValid && !memStageReady
+  val pipeStall = !pipeReady && !exBusy
+  val custom0Active =
+    ifIdValid && (ifId.inst(6, 0) === FxOpcode.CUSTOM_0)
+  val fxFunct3 = ifId.inst(14, 12)
+  val fxFunct7 = ifId.inst(31, 25)
+
+  if (cfg.uarchProfile) {
+    val profileIO = io.asInstanceOf[RV32ICoreProfileIO]
+    profileIO.uarch.retire := io.debugWbValid
+    profileIO.uarch.fetchFire := fetchFire
+    profileIO.uarch.rawStall := rawHazardStall
+    profileIO.uarch.exBusy := exBusy
+    profileIO.uarch.fxHoldFetch := seq.io.holdFetch
+    profileIO.uarch.memStall := memStall
+    profileIO.uarch.pipeStall := pipeStall
+    profileIO.uarch.flush := flush
+    profileIO.uarch.custom0Active := custom0Active
+    profileIO.uarch.custom0Ops.fxAdd :=
+      custom0Active && fxFunct3 === FxFunct3.FXADDSUB && fxFunct7 === FxFunct7.FXADD
+    profileIO.uarch.custom0Ops.fxSub :=
+      custom0Active && fxFunct3 === FxFunct3.FXADDSUB && fxFunct7 === FxFunct7.FXSUB
+    profileIO.uarch.custom0Ops.fxMul := custom0Active && fxFunct3 === FxFunct3.FXMUL
+    profileIO.uarch.custom0Ops.fxNeg := custom0Active && fxFunct3 === FxFunct3.FXNEG
+    profileIO.uarch.custom0Ops.int2Fx := custom0Active && fxFunct3 === FxFunct3.INT2FX
+    profileIO.uarch.custom0Ops.fx2Int := custom0Active && fxFunct3 === FxFunct3.FX2INT
+    profileIO.uarch.custom0Ops.fxAbs := custom0Active && fxFunct3 === FxFunct3.FXABS
+    profileIO.uarch.custom0Ops.fxDiv := custom0Active && fxFunct3 === FxFunct3.FXDIV
+  }
 
   // Invariants to catch control/commit bugs early in simulation.
   when(exMemValid) {
