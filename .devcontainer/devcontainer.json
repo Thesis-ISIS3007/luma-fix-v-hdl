@@ -1,0 +1,24 @@
+{
+  "name": "LumaFixV HDL Devcontainer",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  "runArgs": ["--security-opt", "label=disable"],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "scalameta.metals",
+        "scala-lang.scala",
+        "lramseyer.vaporview",
+        "esbenp.prettier-vscode",
+        "redhat.vscode-yaml"
+      ],
+      "settings": {
+        "workbench.sideBar.location": "right",
+        "editor.renderWhitespace": "boundary",
+        "editor.minimap.enabled": false
+      }
+    }
+  }
+}

@@ -1,0 +1,38 @@
+package build.test
+
+import mill.*, scalalib.*
+
+object `package` extends build.ScalaTests, TestModule.ScalaTest {
+  def mvnDeps = Seq(mvn"org.scalatest::scalatest:3.2.20")
+
+  private def validationEnabled: Boolean = {
+    val prop =
+      sys.props.get("luma.validation").exists(v => v == "1" || v.equalsIgnoreCase("true"))
+    val env =
+      sys.env.get("LUMAFIXV_VALIDATION").exists(v => v == "1" || v.equalsIgnoreCase("true"))
+    prop || env
+  }
+
+  private def samplesEnabled: Boolean = {
+    val prop =
+      sys.props.get("luma.samples").exists(v => v == "1" || v.equalsIgnoreCase("true"))
+    val env =
+      sys.env.get("LUMAFIXV_SAMPLES").exists(v => v == "1" || v.equalsIgnoreCase("true"))
+    prop || env
+  }
+
+  override def defaultTask() = "testCached"
+
+  override def testCachedArgs = Task {
+    val excludes = Seq.newBuilder[String]
+    if (!validationEnabled) {
+      excludes += "-l"
+      excludes += "Validation"
+    }
+    if (!samplesEnabled) {
+      excludes += "-l"
+      excludes += "Samples"
+    }
+    excludes.result()
+  }
+}
