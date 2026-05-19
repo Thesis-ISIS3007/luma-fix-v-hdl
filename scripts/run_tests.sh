@@ -71,4 +71,12 @@ else
   echo "    Sample hex specs: on"
 fi
 
-./mill test "${mill_args[@]}"
+mill_cmd=(./mill)
+if [[ "${validation_on}" -eq 1 ]]; then
+  mill_cmd+=(--define luma.validation=1)
+fi
+if [[ "${samples_on}" -eq 1 ]]; then
+  mill_cmd+=(--define luma.samples=1)
+fi
+
+"${mill_cmd[@]}" test "${mill_args[@]}"

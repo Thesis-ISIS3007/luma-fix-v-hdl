@@ -55,7 +55,10 @@ trait CBinaryProgramSupport { this: ChiselSim =>
       sampler.tick(peekUarch(c))
     }
 
-  private def reportUarch(program: String, sampler: UarchSampler): UarchStats = {
+  private def reportUarch(
+      program: String,
+      sampler: UarchSampler
+  ): UarchStats = {
     val stats = sampler.finish(program)
     if (UarchStats.uarchEnabled) {
       println(stats.logLine)

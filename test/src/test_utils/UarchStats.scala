@@ -53,10 +53,13 @@ final case class UarchStats(
       s"custom0_active=$custom0Active"
 
   def toJson: String = {
-    val counterEntries = counters.map { case (k, v) => s""""$k": $v""" }.mkString(", ")
-    val fractionEntries = fractions.map { case (k, v) =>
-      s""""$k": ${"%.6f".format(v)}"""
-    }.mkString(", ")
+    val counterEntries =
+      counters.map { case (k, v) => s""""$k": $v""" }.mkString(", ")
+    val fractionEntries = fractions
+      .map { case (k, v) =>
+        s""""$k": ${"%.6f".format(v)}"""
+      }
+      .mkString(", ")
     val opCountEntries = UarchStats.Custom0OpNames
       .map { name =>
         s""""$name": ${custom0OpCounts.getOrElse(name, 0L)}"""
@@ -88,11 +91,23 @@ final case class UarchStats(
 
 object UarchStats {
   val Custom0OpNames: Seq[String] =
-    Seq("FXADD", "FXSUB", "FXMUL", "FXNEG", "INT2FX", "FX2INT", "FXABS", "FXDIV")
+    Seq(
+      "FXADD",
+      "FXSUB",
+      "FXMUL",
+      "FXNEG",
+      "INT2FX",
+      "FX2INT",
+      "FXABS",
+      "FXDIV"
+    )
 
   def writeJson(stats: UarchStats, path: Path): Unit = {
     Files.createDirectories(path.getParent)
-    Files.write(path, stats.toJson.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+    Files.write(
+      path,
+      stats.toJson.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+    )
   }
 
   def maybeWriteFromEnv(stats: UarchStats): Unit = {

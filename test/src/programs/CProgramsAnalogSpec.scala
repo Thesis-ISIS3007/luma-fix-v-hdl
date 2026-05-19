@@ -147,7 +147,10 @@ class CProgramsAnalogSpec
       )
     }
 
-    it("unsupported opcodes in stream trap before the final store", Validation) {
+    it(
+      "unsupported opcodes in stream trap before the final store",
+      Validation
+    ) {
       runBinaryProgram(
         "/validation/c_unsupported_opcodes_smoke.hex",
         outAddr = 0x80,

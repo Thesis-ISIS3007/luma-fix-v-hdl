@@ -12,3 +12,6 @@ echo "    Uarch JSON: ${uarch_dir}/"
 export LUMAFIXV_SAMPLES=1
 export LUMAFIXV_UARCH_STATS="${uarch_dir}/"
 ./mill test "$@"
+
+echo "==> Plotting uarch stats"
+./scripts/plot_uarch_out.sh samples

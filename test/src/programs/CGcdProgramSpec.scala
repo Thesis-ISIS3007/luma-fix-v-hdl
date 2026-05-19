@@ -11,7 +11,10 @@ class CGcdProgramSpec
     with ChiselSim
     with CBinaryProgramSupport {
   describe("RV32ICore C GCD program") {
-    it("runs a GCC-compiled C GCD program from a binary memory file", Validation) {
+    it(
+      "runs a GCC-compiled C GCD program from a binary memory file",
+      Validation
+    ) {
       runBinaryProgram(
         "/validation/c_gcd_smoke.hex",
         outAddr = 0x84,

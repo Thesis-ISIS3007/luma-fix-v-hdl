@@ -42,7 +42,10 @@ class CFxProgramSpec
       )
     }
 
-    it("fx_div_smoke: FXDIV across positive/negative/zero divisors", Validation) {
+    it(
+      "fx_div_smoke: FXDIV across positive/negative/zero divisors",
+      Validation
+    ) {
       // sum = 50.0 = 0x320000 in 16Q16; p2 (10.0 in 16Q16) = 0xA0000.
       // FXDIV stalls ~50 cycles per issue and the program issues 7 of them,
       // so we give the simulator a generous horizon.

@@ -5,34 +5,38 @@ import mill.*, scalalib.*
 object `package` extends build.ScalaTests, TestModule.ScalaTest {
   def mvnDeps = Seq(mvn"org.scalatest::scalatest:3.2.20")
 
-  private def validationEnabled: Boolean = {
-    val prop =
-      sys.props.get("luma.validation").exists(v => v == "1" || v.equalsIgnoreCase("true"))
-    val env =
-      sys.env.get("LUMAFIXV_VALIDATION").exists(v => v == "1" || v.equalsIgnoreCase("true"))
-    prop || env
+  private def flagEnabled(propKey: String, envKey: String): Boolean = {
+    def truthy(v: String): Boolean =
+      v == "1" || v.equalsIgnoreCase("true")
+    sys.props.get(propKey).exists(truthy) ||
+    sys.env.get(envKey).exists(truthy)
   }
 
-  private def samplesEnabled: Boolean = {
-    val prop =
-      sys.props.get("luma.samples").exists(v => v == "1" || v.equalsIgnoreCase("true"))
-    val env =
-      sys.env.get("LUMAFIXV_SAMPLES").exists(v => v == "1" || v.equalsIgnoreCase("true"))
-    prop || env
+  /** Re-read each Mill invocation so opt-in tags and LUMAFIXV_* env apply. */
+  def validationEnabled = Task.Input {
+    flagEnabled("luma.validation", "LUMAFIXV_VALIDATION")
   }
 
-  override def defaultTask() = "testCached"
+  def samplesEnabled = Task.Input {
+    flagEnabled("luma.samples", "LUMAFIXV_SAMPLES")
+  }
 
-  override def testCachedArgs = Task {
+  override def forkEnv = Task.Input {
+    sys.env.view.filterKeys(_.startsWith("LUMAFIXV_")).toMap
+  }
+
+  override def testArgsDefault = Task {
     val excludes = Seq.newBuilder[String]
-    if (!validationEnabled) {
+    if (!validationEnabled()) {
       excludes += "-l"
       excludes += "Validation"
     }
-    if (!samplesEnabled) {
+    if (!samplesEnabled()) {
       excludes += "-l"
       excludes += "Samples"
     }
     excludes.result()
   }
+
+  override def testCachedArgs = testArgsDefault
 }
